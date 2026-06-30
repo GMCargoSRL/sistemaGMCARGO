@@ -1,0 +1,5 @@
+para desbloquear, pegar esto en la terminal y apretar enter
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+luego ejecutar el comando
+npm run dev
