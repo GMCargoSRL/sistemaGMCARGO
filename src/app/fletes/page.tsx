@@ -8,12 +8,14 @@ export default function FletesPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const [choferes, setChoferes] = useState([])
-  const [clientes, setClientes] = useState([])
-  const [form, setForm] = useState({
-    numero_fn: '', cliente: '', chofer: '', 
-    contenedor_num: '', contenedor_tipo: '', 
-    origen: '', fecha_hora: '', paradas: '', destino: ''
+  const [clientes, setClientes] = useState<any[]>([])
+  const [choferes, setChoferes] = useState<any[]>([])
+  const [form, setForm] = useState({ 
+    numero_fn: '', cliente: '', chofer: '', contenedor_num: '', 
+    contenedor_tipo: '', origen: '', fecha_hora: '', 
+    paradas: '', destino: '', patente_camion: '', patente_semi: '',
+    lugar_devolucion: '', libre_hasta: '',
+    notas_adicionales: '' 
   })
 
   useEffect(() => {
@@ -26,18 +28,21 @@ export default function FletesPage() {
     fetchData()
   }, [])
 
-  const guardarFlete = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const { error } = await supabase.from('fletes_nacionales').insert([form])
     if (error) alert("Error: " + error.message)
-    else alert("¡Operación registrada!")
+    else alert("¡Operación cargada con éxito!")
   }
 
   return (
-    <form onSubmit={guardarFlete} className="p-8 grid grid-cols-2 gap-4">
-      <input className="border p-2 rounded" placeholder="Número de FN" onChange={e => setForm({...form, numero_fn: e.target.value})} />
+    <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-6">
+      <h2 className="text-xl font-bold">Carga de Nueva Operación</h2>
       
-      <select className="border p-2 rounded" onChange={e => setForm({...form, cliente: e.target.value})}>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" placeholder="Número de FN" className="border p-2" onChange={(e) => setForm({...form, numero_fn: e.target.value})} />
+        
+       <select className="border p-2 rounded" onChange={e => setForm({...form, cliente: e.target.value})}>
         <option value="">Seleccionar Cliente</option>
         {clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]}>{c["Razon Social"]}</option>)}
       </select>
@@ -47,17 +52,27 @@ export default function FletesPage() {
         {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
       </select>
 
-      <div className="flex gap-2">
-        <input className="border p-2 rounded w-1/2" placeholder="N° Contenedor" onChange={e => setForm({...form, contenedor_num: e.target.value})} />
-        <input className="border p-2 rounded w-1/2" placeholder="Tipo (20/40)" onChange={e => setForm({...form, contenedor_tipo: e.target.value})} />
+
+        <input type="text" placeholder="Nº Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} />
+        <input type="text" placeholder="Origen" className="border p-2" onChange={(e) => setForm({...form, origen: e.target.value})} />
+        <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
+        <input type="text" placeholder="Patente Camión" className="border p-2" onChange={(e) => setForm({...form, patente_camion: e.target.value})} />
+        <input type="text" placeholder="Patente Semi" className="border p-2" onChange={(e) => setForm({...form, patente_semi: e.target.value})} />
       </div>
+
+      <input type="text" placeholder="Paradas" className="w-full border p-2" onChange={(e) => setForm({...form, paradas: e.target.value})} />
+      <input type="text" placeholder="Destino" className="w-full border p-2" onChange={(e) => setForm({...form, destino: e.target.value})} />
+
+      <input type="text" placeholder="Lugar Devolucion" className="w-full border p-2" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
+      <label className="block text-sm font-bold">Fecha Devolucion:</label>
+        <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
       
-      <input className="border p-2 rounded" placeholder="Origen" onChange={e => setForm({...form, origen: e.target.value})} />
-      <input type="datetime-local" className="border p-2 rounded" onChange={e => setForm({...form, fecha_hora: e.target.value})} />
-      <input className="border p-2 rounded col-span-2" placeholder="Paradas intermedias" onChange={e => setForm({...form, paradas: e.target.value})} />
-      <input className="border p-2 rounded col-span-2" placeholder="Destino" onChange={e => setForm({...form, destino: e.target.value})} />
-      
-      <button type="submit" className="col-span-2 bg-amber-600 text-white p-3 rounded">Guardar</button>
+      <label className="block text-sm font-bold">Notas Adicionales:</label>
+      <textarea className="w-full border p-2 h-24" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
+
+      <button type="submit" className="bg-sky-600 text-white w-full p-4 font-bold text-lg rounded shadow-lg hover:bg-blue-700">
+        Guardar Operación
+      </button>
     </form>
   )
 }
