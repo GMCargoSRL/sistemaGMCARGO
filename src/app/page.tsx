@@ -4,7 +4,8 @@ import { createBrowserClient } from '@supabase/ssr'
 
 export default function Dashboard() {
   const [fletes, setFletes] = useState<any[]>([])
-  const [orden, setOrden] = useState<'asc' | 'desc'>('desc') // Estado inicial: descendente
+  const [orden, setOrden] = useState<'asc' | 'desc'>('desc')
+  const [busqueda, setBusqueda] = useState('')
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,9 +38,29 @@ export default function Dashboard() {
     }
   }
 
+  const fletesFiltrados = fletes.filter((f) => 
+    Object.values(f).some((valor) => 
+      String(valor).toLowerCase().includes(busqueda.toLowerCase())
+    )
+  );
+
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-bold mb-6">Operaciones en Curso</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Operaciones en Curso</h1>
+        <input 
+          type="text" 
+          placeholder="Buscar..." 
+          className="border p-2 rounded w-64"
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+        <button 
+          onClick={() => setOrden(orden === 'asc' ? 'desc' : 'asc')}
+          className="bg-sky-600 text-white px-4 py-2 rounded font-bold hover:bg-sky-700"
+        >
+          Ordenar: {orden === 'asc' ? 'Antiguos' : 'Recientes'}
+        </button>
+      </div>
       
       <table className="w-full bg-white border rounded-lg shadow-sm">
         <thead>
@@ -56,15 +77,32 @@ export default function Dashboard() {
           </tr>
         </thead>
         <tbody>
-          {fletes.map((f: any) => (
+          {fletesFiltrados.map((f: any) => (
             <tr key={f.numero_fn} className="border-t">
               <td className="p-3 font-medium">{f.numero_fn}</td>
-              <td className="p-3">{f.fecha_hora ? new Date(f.fecha_hora).toLocaleString() : '-'}</td>
-              <td className="p-3 font-medium">{f.chofer}</td>
+              <td className="p-3">
+                {f.fecha_hora 
+                  ? new Date(f.fecha_hora).toLocaleString('es-AR', {
+                      day: '2-digit', month: '2-digit', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                      hour12: false // Forzar 24 horas
+                    }) 
+                  : '-'}
+              </td>
+              <td className="p-3">{f.chofer}</td>
               <td className="p-3">{f.patente_camion}</td>
               <td className="p-3">{f.patente_semi}</td>
               <td className="p-3">{f.contenedor_num}</td>
-              <td className="p-3 text-sm text-gray-600 truncate max-w-[150px]">{f.notas_adicionales}</td>
+              <td className="p-3">
+                <details className="cursor-pointer group">
+                  <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">
+                    {f.notas_adicionales?.length > 20 ? f.notas_adicionales.substring(0, 20) + "..." : f.notas_adicionales || '-'}
+                  </summary>
+                  <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">
+                    {f.notas_adicionales}
+                  </div>
+                </details>
+              </td>
               <td className="p-3">
                 <select 
                   className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${getEstadoStyle(f.estado)}`}
@@ -81,9 +119,9 @@ export default function Dashboard() {
                 </select>
               </td>
               <td className="p-3 flex gap-2">
-                <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 hover:underline text-xs font-bold">Editar</button>
-                <button onClick={() => window.print()} className="text-green-600 hover:underline text-xs font-bold">PDF</button>
-                <button onClick={() => eliminarFlete(f.numero_fn)} className="text-red-500 hover:underline text-xs font-bold">Eliminar</button>
+                <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold">EDITAR</button>
+                <button onClick={() => window.open(`/fletes/${f.numero_fn}/reporte`, '_blank')} className="text-green-600 text-xs font-bold">ORDEN DE FLETE</button>
+                <button onClick={() => eliminarFlete(f.numero_fn)} className="text-red-500 text-xs font-bold">ELIMINAR</button>
               </td>
             </tr>
           ))}
