@@ -1,8 +1,3 @@
-# 1. Agrega todos los archivos nuevos o modificados al índice de Git
 git add .
-
-# 2. Guarda los cambios localmente con un mensaje descriptivo
-git commit -m "Actualizar formulario, reportes y lógica de ordenamiento"
-
-# 3. Sube los cambios a tu repositorio en GitHub
+git commit -m
 git push origin main
