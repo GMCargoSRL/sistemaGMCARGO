@@ -30,9 +30,29 @@ export default function FletesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const { error } = await supabase.from('fletes_nacionales').insert([form])
-    if (error) alert("Error: " + error.message)
-    else alert("¡Operación cargada con éxito!")
+
+    // 1. VALIDACIÓN OBLIGATORIA
+    if (!form.cliente || !form.chofer) {
+      alert("Por favor, selecciona un Cliente y un Chofer para continuar.")
+      return
+    }
+
+    // 2. LIMPIEZA: Convertimos strings vacíos a null para el resto
+    const datosLimpio = { ...form }
+    Object.keys(datosLimpio).forEach(key => {
+      if (datosLimpio[key as keyof typeof datosLimpio] === '') {
+        datosLimpio[key as keyof typeof datosLimpio] = null as any
+      }
+    })
+
+    const { error } = await supabase.from('fletes_nacionales').insert([datosLimpio])
+    
+    if (error) {
+      alert("Error en la base de datos: " + error.message)
+    } else {
+      alert("¡Operación cargada con éxito!")
+      // Opcional: recargar la página o limpiar el formulario
+    }
   }
 
   return (
@@ -42,18 +62,20 @@ export default function FletesPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <input type="text" placeholder="Número de FN" className="border p-2" onChange={(e) => setForm({...form, numero_fn: e.target.value})} />
         
-       <select className="border p-2 rounded" onChange={e => setForm({...form, cliente: e.target.value})}>
-        <option value="">Seleccionar Cliente</option>
-        {clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]}>{c["Razon Social"]}</option>)}
-      </select>
+        {/* SELECTS OBLIGATORIOS: Añadimos 'required' en el HTML */}
+        <select required className="border p-2 rounded" onChange={e => setForm({...form, cliente: e.target.value})}>
+          <option value="">Seleccionar Cliente *</option>
+          {clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]}>{c["Razon Social"]}</option>)}
+        </select>
 
-      <select className="border p-2 rounded" onChange={e => setForm({...form, chofer: e.target.value})}>
-        <option value="">Seleccionar Chofer</option>
-        {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
-      </select>
+        <select required className="border p-2 rounded" onChange={e => setForm({...form, chofer: e.target.value})}>
+          <option value="">Seleccionar Chofer *</option>
+          {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
+        </select>
 
-
+        {/* RESTO DE CAMPOS: Sin 'required', son opcionales */}
         <input type="text" placeholder="Nº Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} />
+        <input type="text" placeholder="Tipo de Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} />
         <input type="text" placeholder="Origen" className="border p-2" onChange={(e) => setForm({...form, origen: e.target.value})} />
         <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
         <input type="text" placeholder="Patente Camión" className="border p-2" onChange={(e) => setForm({...form, patente_camion: e.target.value})} />
@@ -62,10 +84,10 @@ export default function FletesPage() {
 
       <input type="text" placeholder="Paradas" className="w-full border p-2" onChange={(e) => setForm({...form, paradas: e.target.value})} />
       <input type="text" placeholder="Destino" className="w-full border p-2" onChange={(e) => setForm({...form, destino: e.target.value})} />
-
       <input type="text" placeholder="Lugar Devolucion" className="w-full border p-2" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
+      
       <label className="block text-sm font-bold">Fecha Devolucion:</label>
-        <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
+      <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
       
       <label className="block text-sm font-bold">Notas Adicionales:</label>
       <textarea className="w-full border p-2 h-24" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />

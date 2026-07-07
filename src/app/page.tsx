@@ -85,14 +85,17 @@ export default function Dashboard() {
                   ? new Date(f.fecha_hora).toLocaleString('es-AR', {
                       day: '2-digit', month: '2-digit', year: 'numeric',
                       hour: '2-digit', minute: '2-digit',
-                      hour12: false // Forzar 24 horas
+                      hour12: false
                     }) 
                   : '-'}
               </td>
               <td className="p-3">{f.chofer}</td>
               <td className="p-3">{f.patente_camion}</td>
               <td className="p-3">{f.patente_semi}</td>
-              <td className="p-3">{f.contenedor_num}</td>
+              {/* Celda modificada para incluir tipo de contenedor */}
+              <td className="p-3">
+                {f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}
+              </td>
               <td className="p-3">
                 <details className="cursor-pointer group">
                   <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">
