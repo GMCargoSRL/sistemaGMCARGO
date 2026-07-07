@@ -120,6 +120,14 @@ export default function EditarFletePage() {
         <Field label="Destino">
           <input type="text" value={form.destino || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, destino: e.target.value})} />
         </Field>
+
+        <Field label="Lugar Devolucion">
+          <input type="text" value={form.lugar_devolucion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
+        </Field>
+
+        <Field label="Libre Hasta">
+          <input type="text" value={form.libre_hasta || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
+        </Field>
       </div>
 
       <Field label="Notas Adicionales">

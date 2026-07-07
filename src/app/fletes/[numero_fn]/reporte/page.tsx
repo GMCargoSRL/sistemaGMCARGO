@@ -37,16 +37,16 @@ export default function ReporteFlete() {
     doc.setTextColor(0, 0, 0)
     doc.setFont("helvetica", "bold")
     doc.setFontSize(20)
-    doc.text("ORDEN DE CARGA", 20, 60)
+    doc.text("ORDEN DE CARGA", 20, 40)
     
     doc.setTextColor(128, 128, 128)
     doc.setFontSize(10)
-    doc.text("Fletes Nacionales", 20, 65)
+    doc.text("«Fletes Nacionales»", 20, 45)
     
     doc.setTextColor(0, 0, 0)
-    doc.setFontSize(11)
-    doc.text(`FN: ${flete.numero_fn}`, 160, 60)
-    doc.text(`Emitido: ${new Date().toLocaleDateString()}`, 160, 67)
+    doc.setFontSize(12)
+    doc.text(`${flete.numero_fn || ''}`, 160, 40)
+    doc.text(`Emitido: ${new Date().toLocaleDateString()}`, 160, 45)
 
     // Función auxiliar para dibujar cuadros
     const drawBox = (title: string, data: string[], x: number, y: number, w: number, maxWidth: number) => {
@@ -63,7 +63,6 @@ export default function ReporteFlete() {
       const h = (allLines.length * lineSpacing) + 15
       
       doc.rect(x, y, w, h, 'FD')
-      
       doc.setTextColor(26, 68, 143)
       doc.setFont("helvetica", "bold")
       doc.text(title, x + 5, y + 7)
@@ -75,38 +74,40 @@ export default function ReporteFlete() {
       allLines.forEach((line, i) => {
         doc.text(line, x + 5, y + 18 + (i * lineSpacing))
       })
-      return h
+      return h 
     }
 
-    // Dibujo de los bloques
-    // Bloques superiores
-    drawBox("DETALLES DE OPERACION", [
+    // --- Dibujo automático ---
+    const startY = 60;
+    const margin = 10;
+
+    const hDetalles = drawBox("DETALLES DE OPERACION", [
       `Cliente: ${flete.cliente || ''}`,
       `Fecha/Hora: ${flete.fecha_hora ? new Date(flete.fecha_hora).toLocaleString() : '-'}`,
       `Contenedor: ${flete.contenedor_num || ''}`,
       `Tipo: ${flete.contenedor_tipo || '-'}`,
       `Origen: ${flete.origen || ''}`,
       `Destino: ${flete.destino || ''}`
-    ], 15, 80, 85, 75)
+    ], 15, startY, 85, 75);
 
-    drawBox("DATOS DEL EQUIPO", [
+    const hEquipo = drawBox("DATOS DEL EQUIPO", [
       `Chofer: ${flete.chofer || ''}`,
       `Camion: ${flete.patente_camion || ''}`,
       `Semi: ${flete.patente_semi || ''}`
-    ], 115, 80, 80, 70)
+    ], 115, startY, 80, 70);
 
-    // Bloque Devolución
+    const yDevolucion = startY + Math.max(hDetalles, hEquipo) + margin;
+
     const hDevolucion = drawBox("DEVOLUCION DE VACIO", [
-      `Lugar: ${flete.devolucion_lugar || 'No especificado'}`,
-      `Fecha Limite: ${flete.devolucion_fecha || 'No especificada'}`
-    ], 15, 170, 175, 160)
+      `Lugar: ${flete.lugar_devolucion || 'No especificado'}`,
+      `Libre Hasta: ${flete.libre_hasta || 'No especificada'}`
+    ], 15, yDevolucion, 175, 160);
 
-    // Bloque Notas (Posicionado dinámicamente con un margen de 10 unidades extra)
     drawBox("INSTRUCCIONES Y NOTAS", [
       flete.notas_adicionales || 'Sin notas adicionales.'
-    ], 15, 165 + hDevolucion + 10, 175, 160)
+    ], 15, yDevolucion + hDevolucion + margin, 175, 160);
 
-    doc.save(`Orden de Carga ${flete.numero_fn}.pdf`)
+    doc.save(`Orden Carga ${flete.numero_fn}.pdf`)
   }
 
   if (!flete) return <div className="p-10">Cargando...</div>
