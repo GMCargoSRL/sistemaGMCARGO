@@ -1,0 +1,8 @@
+# 1. Preparar todos los archivos modificados
+git add .
+
+# 2. Crear el commit con un mensaje
+git commit -m "Actualización general"
+
+# 3. Subir al repositorio
+git push origin main
