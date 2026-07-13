@@ -35,7 +35,6 @@ export default function FletesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!form.cliente || !form.chofer) {
       alert("Por favor, selecciona un Cliente y un Chofer para continuar.")
       return
@@ -49,7 +48,6 @@ export default function FletesPage() {
     })
 
     const { error } = await supabase.from('fletes_nacionales').insert([datosLimpio])
-    
     if (error) {
       alert("Error en la base de datos: " + error.message)
     } else {
@@ -64,11 +62,17 @@ export default function FletesPage() {
           <input type="text" placeholder="Nº Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} />
           <input type="text" placeholder="Tipo de Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} />
           <input type="text" placeholder="Origen" className="border p-2" onChange={(e) => setForm({...form, origen: e.target.value})} />
-          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
+          <div>
+            <label className="text-xs font-bold text-slate-500">Fecha de Carga</label>
+            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
+          </div>
           <input type="text" placeholder="Paradas" className="border p-2" onChange={(e) => setForm({...form, paradas: e.target.value})} />
           <input type="text" placeholder="Destino" className="border p-2" onChange={(e) => setForm({...form, destino: e.target.value})} />
           <input type="text" placeholder="Lugar Devolucion" className="border p-2" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
-          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
+          <div>
+            <label className="text-xs font-bold text-slate-500">Libre Hasta</label>
+            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
+          </div>
         </div>
       )
     }
@@ -77,21 +81,27 @@ export default function FletesPage() {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input type="text" placeholder="Lugar Carga Contenedor Vacío" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} />
-          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} />
+          <div>
+            <label className="text-xs font-bold text-slate-500">Fecha de Carga</label>
+            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} />
+          </div>
           <input type="text" placeholder="Lugar Carga Mercadería" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} />
           <input type="text" placeholder="Lugar Entrega Contenedor Lleno" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega_lleno: e.target.value})} />
         </div>
       )
     }
 
-    if (form.tipo_operacion === 'Carga Suelta') {
+    if (form.tipo_operacion === 'carga_suelta') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input type="text" placeholder="Lugar de Carga" className="border p-2" onChange={(e) => setForm({...form, lugar_carga: e.target.value})} />
-          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} />
-          <input type="text" placeholder="Cantidad de Bultos" className="border p-2" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} />
-          <input type="text" placeholder="Peso Bruto" className="border p-2" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} />
+          <div>
+            <label className="text-xs font-bold text-slate-500">Fecha de Carga</label>
+            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} />
+          </div>
           <input type="text" placeholder="Lugar de Entrega" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} />
+          <input type="text" placeholder="Cantidad y Tipo de Bultos" className="border p-2" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} />
+          <input type="text" placeholder="Peso Bruto" className="border p-2" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} />
         </div>
       )
     }
@@ -127,8 +137,6 @@ export default function FletesPage() {
           {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
         </select>
         <input type="text" placeholder="Documento Aduanero" className="border p-2" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} />
-        
-        {/* Campos Fijos */}
         <input type="text" placeholder="Patente Camión" className="border p-2" onChange={(e) => setForm({...form, patente_camion: e.target.value})} />
         <input type="text" placeholder="Patente Semi" className="border p-2" onChange={(e) => setForm({...form, patente_semi: e.target.value})} />
       </div>

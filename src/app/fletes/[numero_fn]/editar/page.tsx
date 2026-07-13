@@ -82,17 +82,9 @@ export default function EditarFletePage() {
           </select>
         </Field>
 
-        <Field label="Documento Aduanero">
-          <input type="text" value={form.documento_aduanero || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} />
-        </Field>
-
-        <Field label="Patente Camión">
-          <input type="text" value={form.patente_camion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_camion: e.target.value})} />
-        </Field>
-
-        <Field label="Patente Semi">
-          <input type="text" value={form.patente_semi || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_semi: e.target.value})} />
-        </Field>
+        <Field label="Documento Aduanero"><input type="text" value={form.documento_aduanero || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} /></Field>
+        <Field label="Patente Camión"><input type="text" value={form.patente_camion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_camion: e.target.value})} /></Field>
+        <Field label="Patente Semi"><input type="text" value={form.patente_semi || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_semi: e.target.value})} /></Field>
 
         {/* Campos Dinámicos según tipo */}
         {form.tipo_operacion === 'importacion' && (
@@ -100,7 +92,8 @@ export default function EditarFletePage() {
             <Field label="Nº Contenedor"><input type="text" value={form.contenedor_num || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} /></Field>
             <Field label="Tipo de Contenedor"><input type="text" value={form.contenedor_tipo || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
             <Field label="Origen"><input type="text" value={form.origen || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, origen: e.target.value})} /></Field>
-            <Field label="Fecha y Hora"><input type="datetime-local" value={form.fecha_hora?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} /></Field>
+            <Field label="Fecha de Carga"><input type="datetime-local" value={form.fecha_hora?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} /></Field>
+            <Field label="Paradas"><input type="text" value={form.paradas || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, paradas: e.target.value})} /></Field>
             <Field label="Destino"><input type="text" value={form.destino || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, destino: e.target.value})} /></Field>
             <Field label="Lugar Devolución"><input type="text" value={form.lugar_devolucion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} /></Field>
             <Field label="Libre Hasta"><input type="datetime-local" value={form.libre_hasta?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} /></Field>
@@ -116,13 +109,13 @@ export default function EditarFletePage() {
           </>
         )}
 
-        {form.tipo_operacion === 'Carga Suelta' && (
+        {form.tipo_operacion === 'carga_suelta' && (
           <>
             <Field label="Lugar de Carga"><input type="text" value={form.lugar_carga || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga: e.target.value})} /></Field>
             <Field label="Fecha/Hora Carga"><input type="datetime-local" value={form.fecha_hora_carga?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} /></Field>
-            <Field label="Cantidad Bultos"><input type="text" value={form.cantidad_bultos || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} /></Field>
-            <Field label="Peso Bruto"><input type="text" value={form.peso_bruto || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} /></Field>
             <Field label="Lugar de Entrega"><input type="text" value={form.lugar_entrega || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} /></Field>
+            <Field label="Cantidad y Tipo de Bultos"><input type="text" value={form.cantidad_bultos || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} /></Field>
+            <Field label="Peso Bruto"><input type="text" value={form.peso_bruto || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} /></Field>
           </>
         )}
       </div>
