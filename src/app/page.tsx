@@ -137,6 +137,7 @@ export default function Dashboard() {
         <thead>
           <tr className="bg-gray-100 text-left">
             <th className="p-3">FN</th>
+            <th className="p-3">Cliente</th>
             <th className="p-3">Tipo</th>
             <th className="p-3">Fecha y Hora</th>
             <th className="p-3">Chofer</th>
@@ -152,6 +153,7 @@ export default function Dashboard() {
           {fletesFiltrados.map((f: any) => (
             <tr key={f.numero_fn} className="border-t">
               <td className="p-3 font-medium">{f.numero_fn}</td>
+              <td className="p-3 text-sm text-gray-700">{f.cliente || '-'}</td>
               <td className="p-3 text-xs font-bold uppercase text-gray-500">{f.tipo_operacion || '-'}</td>
               <td className="p-3">{f.fecha_hora ? new Date(f.fecha_hora).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
               <td className="p-3">{f.chofer}</td>
