@@ -57,8 +57,10 @@ export default function Dashboard() {
         `Contenedor: ${flete.contenedor_num || ' '} (${flete.contenedor_tipo || ' '})`,
         `Origen: ${flete.origen || ' '}`,
         `Fecha y Hora: ${flete.fecha_hora ? new Date(flete.fecha_hora).toLocaleString('es-AR') : ' '}`,
+        `Paradas: ${flete.paradas || 'Ninguna'}`,
         `Destino: ${flete.destino || ' '}`,
-        `Devolución: ${flete.lugar_devolucion || ' '} (Libre hasta: ${flete.libre_hasta ? new Date(flete.libre_hasta).toLocaleString('es-AR') : ' '})`
+        `Devolución: ${flete.lugar_devolucion || ' '}`,
+        `Libre hasta: ${flete.libre_hasta ? new Date(flete.libre_hasta).toLocaleString('es-AR') : ' '}`
       ]
     } else if (flete.tipo_operacion === 'exportacion') {
       datosEspecificos = [
