@@ -65,14 +65,14 @@ export default function Dashboard() {
     } else if (flete.tipo_operacion === 'exportacion') {
       datosEspecificos = [
         `Lugar Carga Vacío: ${flete.lugar_carga_vacio || ' '}`,
-        `Fecha y Hora: ${flete.fecha_hora ? new Date(flete.fecha_hora).toLocaleString('es-AR') : ' '}`,
+        `Fecha y Hora: ${flete.fecha_carga_vacio ? new Date(flete.fecha_carga_vacio).toLocaleString('es-AR') : ' '}`,
         `Lugar Carga Mercadería: ${flete.lugar_carga_mercaderia || ' '}`,
         `Lugar Entrega Lleno: ${flete.lugar_entrega_lleno || ' '}`
       ]
     } else if (flete.tipo_operacion === 'carga_suelta') {
       datosEspecificos = [
         `Lugar Carga: ${flete.lugar_carga || ' '}`,
-        `Fecha y Hora: ${flete.fecha_hora ? new Date(flete.fecha_hora).toLocaleString('es-AR') : ' '}`,
+        `Fecha y Hora: ${flete.fecha_hora_carga ? new Date(flete.fecha_hora_carga).toLocaleString('es-AR') : ' '}`,
         `Lugar Entrega: ${flete.lugar_entrega || ' '}`,
         `Cantidad Bultos: ${flete.cantidad_bultos || ' '}`,
         `Peso Bruto: ${flete.peso_bruto || ' '}`
@@ -80,8 +80,10 @@ export default function Dashboard() {
     }
 
     const hGen = drawBox("DETALLES DE LA OPERACION", [...datosGenerales, ...datosEspecificos], 15, startY, 85, 75)
+    
     const hEquipo = drawBox("DATOS DEL EQUIPO", [
       `Chofer: ${flete.chofer || ' '}`,
+      `Teléfono: ${flete.telefono_chofer || 'No informado'}`, 
       `Patente Camión: ${flete.patente_camion || ' '}`,
       `Patente Semi: ${flete.patente_semi || ' '}`
     ], 115, startY, 80, 70)
@@ -150,36 +152,39 @@ export default function Dashboard() {
           </tr>
         </thead>
         <tbody>
-          {fletesFiltrados.map((f: any) => (
-            <tr key={f.numero_fn} className="border-t">
-              <td className="p-3 font-medium">{f.numero_fn}</td>
-              <td className="p-3 text-sm text-gray-700">{f.cliente || '-'}</td>
-              <td className="p-3 text-xs font-bold uppercase text-gray-500">{f.tipo_operacion || '-'}</td>
-              <td className="p-3">{f.fecha_hora ? new Date(f.fecha_hora).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
-              <td className="p-3">{f.chofer}</td>
-              <td className="p-3">{f.patente_camion}</td>
-              <td className="p-3">{f.patente_semi}</td>
-              <td className="p-3">{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</td>
-              <td className="p-3">
-                <details className="cursor-pointer group">
-                  <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{f.notas_adicionales?.length > 20 ? f.notas_adicionales.substring(0, 20) + "..." : f.notas_adicionales || '-'}</summary>
-                  <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales}</div>
-                </details>
-              </td>
-              <td className="p-3">
-                <select className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${getEstadoStyle(f.estado)}`} value={f.estado || 'EN PREPARACIÓN'} onChange={async (e) => { const nuevoEstado = e.target.value; await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn); setFletes(fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item)); }}>
-                  <option value="EN PREPARACIÓN">EN PREPARACIÓN</option>
-                  <option value="EN CURSO">EN CURSO</option>
-                  <option value="TERMINADO">TERMINADO</option>
-                </select>
-              </td>
-              <td className="p-3 flex gap-2">
-                <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold">EDITAR</button>
-                <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold">ORDEN DE FLETE</button>
-                <button onClick={() => eliminarFlete(f.numero_fn)} className="text-red-500 text-xs font-bold">ELIMINAR</button>
-              </td>
-            </tr>
-          ))}
+          {fletesFiltrados.map((f: any) => {
+            const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
+            return (
+              <tr key={f.numero_fn} className="border-t">
+                <td className="p-3 font-medium">{f.numero_fn}</td>
+                <td className="p-3 text-sm text-gray-700">{f.cliente || '-'}</td>
+                <td className="p-3 text-xs font-bold uppercase text-gray-500">{f.tipo_operacion || '-'}</td>
+                <td className="p-3">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
+                <td className="p-3">{f.chofer}</td>
+                <td className="p-3">{f.patente_camion}</td>
+                <td className="p-3">{f.patente_semi}</td>
+                <td className="p-3">{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</td>
+                <td className="p-3">
+                  <details className="cursor-pointer group">
+                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{f.notas_adicionales?.length > 20 ? f.notas_adicionales.substring(0, 20) + "..." : f.notas_adicionales || '-'}</summary>
+                    <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales}</div>
+                  </details>
+                </td>
+                <td className="p-3">
+                  <select className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${getEstadoStyle(f.estado)}`} value={f.estado || 'EN PREPARACIÓN'} onChange={async (e) => { const nuevoEstado = e.target.value; await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn); setFletes(fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item)); }}>
+                    <option value="EN PREPARACIÓN">EN PREPARACIÓN</option>
+                    <option value="EN CURSO">EN CURSO</option>
+                    <option value="TERMINADO">TERMINADO</option>
+                  </select>
+                </td>
+                <td className="p-3 flex gap-2">
+                  <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold">EDITAR</button>
+                  <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold">ORDEN DE FLETE</button>
+                  <button onClick={() => eliminarFlete(f.numero_fn)} className="text-red-500 text-xs font-bold">ELIMINAR</button>
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

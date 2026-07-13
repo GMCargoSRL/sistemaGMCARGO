@@ -24,7 +24,6 @@ export default function EditarFletePage() {
   const [choferes, setChoferes] = useState<any[]>([])
   const [form, setForm] = useState<any>(null)
 
-  // Función para formatear fechas para input datetime-local
   const formatDatetime = (dateString: string | null) => {
     if (!dateString) return '';
     try {
@@ -92,6 +91,17 @@ export default function EditarFletePage() {
           </select>
         </Field>
 
+        {/* NUEVO CAMPO AGREGADO AQUÍ */}
+        <Field label="Teléfono del Chofer">
+          <input 
+            type="text" 
+            value={form.telefono_chofer || ''} 
+            className="border p-2 rounded" 
+            placeholder="Ej: 549..."
+            onChange={(e) => setForm({...form, telefono_chofer: e.target.value})} 
+          />
+        </Field>
+
         <Field label="Documento Aduanero"><input type="text" value={form.documento_aduanero || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} /></Field>
         <Field label="Patente Camión"><input type="text" value={form.patente_camion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_camion: e.target.value})} /></Field>
         <Field label="Patente Semi"><input type="text" value={form.patente_semi || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_semi: e.target.value})} /></Field>
@@ -132,12 +142,6 @@ export default function EditarFletePage() {
       <Field label="Notas Adicionales">
         <textarea value={form.notas_adicionales || ''} className="w-full border p-2 h-24 rounded" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
       </Field>
-
-      {/* Bloque de Verificación de Datos */}
-      <div className="bg-gray-100 p-4 mt-8 rounded text-xs overflow-auto">
-        <p className="font-bold mb-2">Verificación de datos cargados (Debug):</p>
-        <pre>{JSON.stringify(form, null, 2)}</pre>
-      </div>
 
       <button type="submit" className="bg-sky-600 text-white w-full p-4 font-bold rounded shadow-lg hover:bg-blue-700">
         Guardar Cambios
