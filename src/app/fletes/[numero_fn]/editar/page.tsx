@@ -24,6 +24,16 @@ export default function EditarFletePage() {
   const [choferes, setChoferes] = useState<any[]>([])
   const [form, setForm] = useState<any>(null)
 
+  // Función para formatear fechas para input datetime-local
+  const formatDatetime = (dateString: string | null) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toISOString().slice(0, 16);
+    } catch (e) {
+      return '';
+    }
+  };
+
   useEffect(() => {
     async function fetchData() {
       const { data: c } = await supabase.from('choferes').select('CHOFER')
@@ -86,24 +96,23 @@ export default function EditarFletePage() {
         <Field label="Patente Camión"><input type="text" value={form.patente_camion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_camion: e.target.value})} /></Field>
         <Field label="Patente Semi"><input type="text" value={form.patente_semi || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_semi: e.target.value})} /></Field>
 
-        {/* Campos Dinámicos según tipo */}
         {form.tipo_operacion === 'importacion' && (
           <>
             <Field label="Nº Contenedor"><input type="text" value={form.contenedor_num || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} /></Field>
             <Field label="Tipo de Contenedor"><input type="text" value={form.contenedor_tipo || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
             <Field label="Origen"><input type="text" value={form.origen || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, origen: e.target.value})} /></Field>
-            <Field label="Fecha de Carga"><input type="datetime-local" value={form.fecha_hora?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} /></Field>
+            <Field label="Fecha de Carga"><input type="datetime-local" value={formatDatetime(form.fecha_hora)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} /></Field>
             <Field label="Paradas"><input type="text" value={form.paradas || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, paradas: e.target.value})} /></Field>
             <Field label="Destino"><input type="text" value={form.destino || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, destino: e.target.value})} /></Field>
             <Field label="Lugar Devolución"><input type="text" value={form.lugar_devolucion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} /></Field>
-            <Field label="Libre Hasta"><input type="datetime-local" value={form.libre_hasta?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} /></Field>
+            <Field label="Libre Hasta"><input type="datetime-local" value={formatDatetime(form.libre_hasta)} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} /></Field>
           </>
         )}
 
         {form.tipo_operacion === 'exportacion' && (
           <>
             <Field label="Lugar Carga Vacío"><input type="text" value={form.lugar_carga_vacio || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} /></Field>
-            <Field label="Fecha Carga Vacío"><input type="datetime-local" value={form.fecha_carga_vacio?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} /></Field>
+            <Field label="Fecha Carga Vacío"><input type="datetime-local" value={formatDatetime(form.fecha_carga_vacio)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} /></Field>
             <Field label="Lugar Carga Mercadería"><input type="text" value={form.lugar_carga_mercaderia || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} /></Field>
             <Field label="Lugar Entrega Lleno"><input type="text" value={form.lugar_entrega_lleno || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_entrega_lleno: e.target.value})} /></Field>
           </>
@@ -112,7 +121,7 @@ export default function EditarFletePage() {
         {form.tipo_operacion === 'carga_suelta' && (
           <>
             <Field label="Lugar de Carga"><input type="text" value={form.lugar_carga || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga: e.target.value})} /></Field>
-            <Field label="Fecha/Hora Carga"><input type="datetime-local" value={form.fecha_hora_carga?.slice(0, 16) || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} /></Field>
+            <Field label="Fecha/Hora Carga"><input type="datetime-local" value={formatDatetime(form.fecha_hora_carga)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} /></Field>
             <Field label="Lugar de Entrega"><input type="text" value={form.lugar_entrega || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} /></Field>
             <Field label="Cantidad y Tipo de Bultos"><input type="text" value={form.cantidad_bultos || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} /></Field>
             <Field label="Peso Bruto"><input type="text" value={form.peso_bruto || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} /></Field>
@@ -123,6 +132,12 @@ export default function EditarFletePage() {
       <Field label="Notas Adicionales">
         <textarea value={form.notas_adicionales || ''} className="w-full border p-2 h-24 rounded" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
       </Field>
+
+      {/* Bloque de Verificación de Datos */}
+      <div className="bg-gray-100 p-4 mt-8 rounded text-xs overflow-auto">
+        <p className="font-bold mb-2">Verificación de datos cargados (Debug):</p>
+        <pre>{JSON.stringify(form, null, 2)}</pre>
+      </div>
 
       <button type="submit" className="bg-sky-600 text-white w-full p-4 font-bold rounded shadow-lg hover:bg-blue-700">
         Guardar Cambios
