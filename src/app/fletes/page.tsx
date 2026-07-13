@@ -15,7 +15,12 @@ export default function FletesPage() {
     contenedor_tipo: '', origen: '', fecha_hora: '', 
     paradas: '', destino: '', patente_camion: '', patente_semi: '',
     lugar_devolucion: '', libre_hasta: '',
-    notas_adicionales: '' 
+    notas_adicionales: '',
+    lugar_carga_vacio: '', fecha_carga_vacio: '',
+    lugar_carga_mercaderia: '', lugar_entrega_lleno: '',
+    lugar_carga: '', fecha_hora_carga: '', documento_aduanero: '', 
+    cantidad_bultos: '', peso_bruto: '', lugar_entrega: '',
+    tipo_operacion: 'importacion'
   })
 
   useEffect(() => {
@@ -31,13 +36,11 @@ export default function FletesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // 1. VALIDACIÓN OBLIGATORIA
     if (!form.cliente || !form.chofer) {
       alert("Por favor, selecciona un Cliente y un Chofer para continuar.")
       return
     }
 
-    // 2. LIMPIEZA: Convertimos strings vacíos a null para el resto
     const datosLimpio = { ...form }
     Object.keys(datosLimpio).forEach(key => {
       if (datosLimpio[key as keyof typeof datosLimpio] === '') {
@@ -51,44 +54,87 @@ export default function FletesPage() {
       alert("Error en la base de datos: " + error.message)
     } else {
       alert("¡Operación cargada con éxito!")
-      // Opcional: recargar la página o limpiar el formulario
     }
+  }
+
+  const renderCamposSegunTipo = () => {
+    if (form.tipo_operacion === 'importacion') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="text" placeholder="Nº Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} />
+          <input type="text" placeholder="Tipo de Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} />
+          <input type="text" placeholder="Origen" className="border p-2" onChange={(e) => setForm({...form, origen: e.target.value})} />
+          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
+          <input type="text" placeholder="Paradas" className="border p-2" onChange={(e) => setForm({...form, paradas: e.target.value})} />
+          <input type="text" placeholder="Destino" className="border p-2" onChange={(e) => setForm({...form, destino: e.target.value})} />
+          <input type="text" placeholder="Lugar Devolucion" className="border p-2" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
+          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
+        </div>
+      )
+    }
+
+    if (form.tipo_operacion === 'exportacion') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="text" placeholder="Lugar Carga Contenedor Vacío" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} />
+          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} />
+          <input type="text" placeholder="Lugar Carga Mercadería" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} />
+          <input type="text" placeholder="Lugar Entrega Contenedor Lleno" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega_lleno: e.target.value})} />
+        </div>
+      )
+    }
+
+    if (form.tipo_operacion === 'Carga Suelta') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="text" placeholder="Lugar de Carga" className="border p-2" onChange={(e) => setForm({...form, lugar_carga: e.target.value})} />
+          <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} />
+          <input type="text" placeholder="Cantidad de Bultos" className="border p-2" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} />
+          <input type="text" placeholder="Peso Bruto" className="border p-2" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} />
+          <input type="text" placeholder="Lugar de Entrega" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} />
+        </div>
+      )
+    }
+    return null
   }
 
   return (
     <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-6">
       <h2 className="text-xl font-bold">Carga de Nueva Operación</h2>
       
+      <div className="bg-sky-50 p-4 rounded border border-sky-200">
+        <label className="block text-sm font-bold mb-2">Tipo de Operación *</label>
+        <select 
+          required 
+          className="w-full border p-2 rounded" 
+          value={form.tipo_operacion}
+          onChange={e => setForm({...form, tipo_operacion: e.target.value})}
+        >
+          <option value="importacion">Contenedor de Importación/TRM</option>
+          <option value="exportacion">Contenedor de Exportación</option>
+          <option value="carga_suelta">Carga Suelta</option>
+        </select>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <input type="text" placeholder="Número de FN" className="border p-2" onChange={(e) => setForm({...form, numero_fn: e.target.value})} />
-        
-        {/* SELECTS OBLIGATORIOS: Añadimos 'required' en el HTML */}
         <select required className="border p-2 rounded" onChange={e => setForm({...form, cliente: e.target.value})}>
           <option value="">Seleccionar Cliente *</option>
           {clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]}>{c["Razon Social"]}</option>)}
         </select>
-
         <select required className="border p-2 rounded" onChange={e => setForm({...form, chofer: e.target.value})}>
           <option value="">Seleccionar Chofer *</option>
           {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
         </select>
-
-        {/* RESTO DE CAMPOS: Sin 'required', son opcionales */}
-        <input type="text" placeholder="Nº Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} />
-        <input type="text" placeholder="Tipo de Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} />
-        <input type="text" placeholder="Origen" className="border p-2" onChange={(e) => setForm({...form, origen: e.target.value})} />
-        <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
+        <input type="text" placeholder="Documento Aduanero" className="border p-2" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} />
+        
+        {/* Campos Fijos */}
         <input type="text" placeholder="Patente Camión" className="border p-2" onChange={(e) => setForm({...form, patente_camion: e.target.value})} />
         <input type="text" placeholder="Patente Semi" className="border p-2" onChange={(e) => setForm({...form, patente_semi: e.target.value})} />
       </div>
 
-      <input type="text" placeholder="Paradas" className="w-full border p-2" onChange={(e) => setForm({...form, paradas: e.target.value})} />
-      <input type="text" placeholder="Destino" className="w-full border p-2" onChange={(e) => setForm({...form, destino: e.target.value})} />
-      <input type="text" placeholder="Lugar Devolucion" className="w-full border p-2" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
-      
-      <label className="block text-sm font-bold">Fecha Devolucion:</label>
-      <input type="datetime-local" className="border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
-      
+      {renderCamposSegunTipo()}
+
       <label className="block text-sm font-bold">Notas Adicionales:</label>
       <textarea className="w-full border p-2 h-24" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
 
