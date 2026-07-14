@@ -24,22 +24,17 @@ export default function EditarFletePage() {
   const [choferes, setChoferes] = useState<any[]>([])
   const [form, setForm] = useState<any>(null)
 
+  // CORRECCIÓN: Función que limpia el string para evitar conversiones UTC
   const formatDatetime = (dateString: string | null) => {
     if (!dateString) return '';
-    try {
-      return new Date(dateString).toISOString().slice(0, 16);
-    } catch (e) {
-      return '';
-    }
+    return dateString.substring(0, 16);
   };
 
   useEffect(() => {
     async function fetchData() {
-      // 1. Traemos la lista de choferes con su respectivo "DOC. ID."
       const { data: listadoChoferes } = await supabase.from('choferes').select('CHOFER, "DOC. ID."')
       const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
       
-      // 2. Traemos los datos de la operación actual
       const { data: flete } = await supabase
         .from('fletes_nacionales')
         .select('*')
@@ -50,7 +45,6 @@ export default function EditarFletePage() {
       if (cl) setClientes(cl)
       
       if (flete) {
-        // 3. Si el flete no tiene un 'dni_chofer' guardado aún, lo buscamos en el listado para auto-completarlo de entrada
         if (!flete.dni_chofer && flete.chofer && listadoChoferes) {
           const choferEncontrado = listadoChoferes.find(c => c.CHOFER === flete.chofer)
           flete.dni_chofer = choferEncontrado ? choferEncontrado["DOC. ID."] : ''
@@ -61,7 +55,6 @@ export default function EditarFletePage() {
     fetchData()
   }, [numero_fn])
 
-  // Lógica dinámica: Al cambiar de chofer en el selector, busca su "DOC. ID." y actualiza el estado
   const handleChoferChange = (nombreChofer: string) => {
     const choferSeleccionado = choferes.find(c => c.CHOFER === nombreChofer)
     const dni = choferSeleccionado ? choferSeleccionado["DOC. ID."] : ''
@@ -69,7 +62,7 @@ export default function EditarFletePage() {
     setForm({
       ...form,
       chofer: nombreChofer,
-      dni_chofer: dni || '' // Se auto-completa el DNI al instante
+      dni_chofer: dni || ''
     })
   }
 
@@ -113,25 +106,12 @@ export default function EditarFletePage() {
           </select>
         </Field>
 
-        {/* CAMPO DNI: AUTO-COMPLETADO Y TOTALMENTE EDITABLE */}
         <Field label="DNI Chofer">
-          <input 
-            type="text" 
-            value={form.dni_chofer || ''} 
-            className="border p-2 rounded bg-white focus:bg-sky-50 transition-colors" 
-            placeholder="DNI"
-            onChange={(e) => setForm({...form, dni_chofer: e.target.value})} 
-          />
+          <input type="text" value={form.dni_chofer || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, dni_chofer: e.target.value})} />
         </Field>
 
         <Field label="Teléfono del Chofer">
-          <input 
-            type="text" 
-            value={form.telefono_chofer || ''} 
-            className="border p-2 rounded" 
-            placeholder="Ej: 549..."
-            onChange={(e) => setForm({...form, telefono_chofer: e.target.value})} 
-          />
+          <input type="text" value={form.telefono_chofer || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, telefono_chofer: e.target.value})} />
         </Field>
 
         <Field label="Documento Aduanero"><input type="text" value={form.documento_aduanero || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} /></Field>
@@ -148,13 +128,8 @@ export default function EditarFletePage() {
             <Field label="Destino"><input type="text" value={form.destino || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, destino: e.target.value})} /></Field>
             <Field label="Lugar Devolución"><input type="text" value={form.lugar_devolucion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} /></Field>
             <Field label="Libre Hasta"><input type="datetime-local" value={formatDatetime(form.libre_hasta)} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} /></Field>
-            
             <Field label="¿Es TRAM?">
-              <select 
-                value={form.tram || 'NO'} 
-                className="border p-2 rounded" 
-                onChange={e => setForm({...form, tram: e.target.value})}
-              >
+              <select value={form.tram || 'NO'} className="border p-2 rounded" onChange={e => setForm({...form, tram: e.target.value})}>
                 <option value="NO">NO</option>
                 <option value="SI">SI</option>
               </select>
@@ -166,7 +141,6 @@ export default function EditarFletePage() {
           <>
             <Field label="Nº Contenedor"><input type="text" value={form.contenedor_num || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} /></Field>
             <Field label="Tipo de Contenedor"><input type="text" value={form.contenedor_tipo || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
-            
             <Field label="Lugar Carga Vacío"><input type="text" value={form.lugar_carga_vacio || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} /></Field>
             <Field label="Fecha Carga Vacío"><input type="datetime-local" value={formatDatetime(form.fecha_carga_vacio)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} /></Field>
             <Field label="Lugar Carga Mercadería"><input type="text" value={form.lugar_carga_mercaderia || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} /></Field>
@@ -186,7 +160,7 @@ export default function EditarFletePage() {
       </div>
 
       <Field label="Notas Adicionales">
-        <textarea value={form.notes_adicionales || form.notas_adicionales || ''} className="w-full border p-2 h-24 rounded" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
+        <textarea value={form.notas_adicionales || ''} className="w-full border p-2 h-24 rounded" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
       </Field>
 
       <button type="submit" className="bg-sky-600 text-white w-full p-4 font-bold rounded shadow-lg hover:bg-blue-700">
