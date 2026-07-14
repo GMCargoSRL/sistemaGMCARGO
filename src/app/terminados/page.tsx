@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
-export default function Dashboard() {
+export default function Terminados() {
   const [fletes, setFletes] = useState<any[]>([])
   const [orden, setOrden] = useState<'asc' | 'desc'>('desc')
   const [busqueda, setBusqueda] = useState('')
@@ -13,28 +13,9 @@ export default function Dashboard() {
   )
 
   // --- LÓGICA GENERAR PDF ---
-  const generarPDF = async (flete: any) => {
+  const generarPDF = (flete: any) => {
     const { jsPDF } = require("jspdf")
     const doc = new jsPDF()
-
-    // 1. Buscamos el DNI de manera inteligente
-    let dniChofer = 'No informado'
-
-    if (flete.dni_chofer) {
-      // Si el flete ya tiene el DNI guardado directamente (gracias a la nueva columna), usamos ese (prioriza cambios manuales)
-      dniChofer = flete.dni_chofer
-    } else if (flete.chofer) {
-      // Fallback para fletes viejos: si no tiene 'dni_chofer' guardado pero sí tiene chofer, lo buscamos dinámicamente
-      const { data: choferData } = await supabase
-        .from('choferes')
-        .select('"DOC. ID."')
-        .eq('CHOFER', flete.chofer) // Filtramos por la columna 'CHOFER'
-        .maybeSingle()
-      
-      if (choferData && choferData['DOC. ID.']) {
-        dniChofer = choferData['DOC. ID.']
-      }
-    }
 
     doc.addImage("/membrete GM CARGO.jpg", "JPG", -10, 0, 230, 297)
     
@@ -105,16 +86,14 @@ export default function Dashboard() {
 
     const hGen = drawBox("DETALLES DE LA OPERACION", [...datosGenerales, ...datosEspecificos], 15, startY, 85, 75)
     
-    // AQUÍ SE CAMBIÓ: Ahora muestra "DNI: [número]" en lugar de "DNI Chofer"
     const hEquipo = drawBox("DATOS DEL EQUIPO", [
       `Chofer: ${flete.chofer || ' '}`,
-      `DNI: ${dniChofer}`, 
       `Teléfono: ${flete.telefono_chofer || 'No informado'}`, 
       `Patente Camión: ${flete.patente_camion || ' '}`,
       `Patente Semi: ${flete.patente_semi || ' '}`
     ], 115, startY, 80, 70)
 
-    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || flete.notes_adicionales || 'Sin notas adicionales.'], 15, startY + Math.max(hGen, hEquipo) + 10, 180, 170)
+    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || 'Sin notas adicionales.'], 15, startY + Math.max(hGen, hEquipo) + 10, 180, 170)
 
     doc.save(`Orden Carga ${flete.numero_fn}.pdf`)
   }
@@ -132,7 +111,8 @@ export default function Dashboard() {
     const { data } = await supabase
       .from('fletes_nacionales')
       .select('*')
-      .neq('estado', 'TERMINADO') 
+      // Filtramos para traer EXCLUSIVAMENTE los terminados
+      .eq('estado', 'TERMINADO') 
       .order('fecha_hora', { ascending: orden === 'asc' })
     if (data) setFletes(data)
   }
@@ -156,8 +136,8 @@ export default function Dashboard() {
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Operaciones en Curso</h1>
-          <p className="text-sm text-gray-500">Listado de fletes activos en preparación o tránsito.</p>
+          <h1 className="text-2xl font-bold text-gray-800">Historial de Operaciones (Terminados)</h1>
+          <p className="text-sm text-gray-500">Listado histórico de todas las operaciones finalizadas.</p>
         </div>
         <div className="flex gap-4 items-center">
           <input type="text" placeholder="Buscar..." className="border p-2 rounded w-64 text-sm" onChange={(e) => setBusqueda(e.target.value)} />
@@ -198,19 +178,20 @@ export default function Dashboard() {
                 <td className="p-3 text-sm text-gray-700">{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</td>
                 <td className="p-3">
                   <details className="cursor-pointer group">
-                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{(f.notas_adicionales || f.notes_adicionales)?.length > 20 ? (f.notas_adicionales || f.notes_adicionales).substring(0, 20) + "..." : (f.notas_adicionales || f.notes_adicionales) || '-'}</summary>
-                    <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales || f.notes_adicionales}</div>
+                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{f.notas_adicionales?.length > 20 ? f.notas_adicionales.substring(0, 20) + "..." : f.notas_adicionales || '-'}</summary>
+                    <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales}</div>
                   </details>
                 </td>
                 <td className="p-3">
                   <select 
                     className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${getEstadoStyle(f.estado)}`} 
-                    value={f.estado || 'EN PREPARACIÓN'} 
+                    value={f.estado || 'TERMINADO'} 
                     onChange={async (e) => { 
                       const nuevoEstado = e.target.value; 
                       await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
                       
-                      if (nuevoEstado === 'TERMINADO') {
+                      // Si cambia a un estado distinto de "TERMINADO", desaparece de este historial
+                      if (nuevoEstado !== 'TERMINADO') {
                         setFletes(fletes.filter((item: any) => item.numero_fn !== f.numero_fn));
                       } else {
                         setFletes(fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item)); 
@@ -233,7 +214,7 @@ export default function Dashboard() {
           {fletesFiltrados.length === 0 && (
             <tr>
               <td colSpan={11} className="p-8 text-center text-gray-400 text-sm">
-                No hay operaciones activas en este momento.
+                No hay operaciones guardadas en el historial.
               </td>
             </tr>
           )}

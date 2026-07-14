@@ -2,6 +2,21 @@
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 
+// Estado inicial limpio para verificar si el usuario modificó algún dato
+const ESTADO_INICIAL = { 
+  numero_fn: '', cliente: '', chofer: '', dni_chofer: '', telefono_chofer: '', contenedor_num: '', 
+  contenedor_tipo: '', origen: '', fecha_hora: '', 
+  paradas: '', destino: '', patente_camion: '', patente_semi: '',
+  lugar_devolucion: '', libre_hasta: '',
+  notas_adicionales: '',
+  lugar_carga_vacio: '', fecha_carga_vacio: '',
+  lugar_carga_mercaderia: '', lugar_entrega_lleno: '',
+  lugar_carga: '', fecha_hora_carga: '', documento_aduanero: '', 
+  cantidad_bultos: '', peso_bruto: '', lugar_entrega: '',
+  tipo_operacion: 'importacion',
+  tram: 'NO'
+}
+
 export default function FletesPage() {
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,29 +25,76 @@ export default function FletesPage() {
 
   const [clientes, setClientes] = useState<any[]>([])
   const [choferes, setChoferes] = useState<any[]>([])
-  const [form, setForm] = useState({ 
-    numero_fn: '', cliente: '', chofer: '', telefono_chofer: '', contenedor_num: '', 
-    contenedor_tipo: '', origen: '', fecha_hora: '', 
-    paradas: '', destino: '', patente_camion: '', patente_semi: '',
-    lugar_devolucion: '', libre_hasta: '',
-    notas_adicionales: '',
-    lugar_carga_vacio: '', fecha_carga_vacio: '',
-    lugar_carga_mercaderia: '', lugar_entrega_lleno: '',
-    lugar_carga: '', fecha_hora_carga: '', documento_aduanero: '', 
-    cantidad_bultos: '', peso_bruto: '', lugar_entrega: '',
-    tipo_operacion: 'importacion',
-    tram: 'NO' // <-- Agregado al estado inicial
-  })
+  const [form, setForm] = useState({ ...ESTADO_INICIAL })
+  const [guardadoExitoso, setGuardadoExitoso] = useState(false)
+
+  // Función para determinar si el formulario tiene datos ingresados
+  const tieneCambiosSinGuardar = () => {
+    return Object.keys(form).some(key => {
+      const valorActual = form[key as keyof typeof form];
+      const valorInicial = ESTADO_INICIAL[key as keyof typeof ESTADO_INICIAL];
+      return valorActual !== valorInicial;
+    });
+  }
+
+  // 1. Protección contra cierre o recarga de pestaña (Navegador)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (tieneCambiosSinGuardar() && !guardadoExitoso) {
+        e.preventDefault()
+        e.returnValue = '¿Seguro que quieres salir? Los cambios no guardados se perderán.'
+        return e.returnValue
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [form, guardadoExitoso])
+
+  // 2. Protección contra navegación interna (Clicks en el menú lateral o links dentro de la app)
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const anchor = target.closest('a')
+
+      if (anchor && tieneCambiosSinGuardar() && !guardadoExitoso) {
+        // Obtenemos el destino
+        const href = anchor.getAttribute('href')
+        // Si el enlace apunta a otra página (no es un link vacío o un ancla interna)
+        if (href && !href.startsWith('#') && href !== window.location.pathname) {
+          const confirmar = window.confirm('Tienes cambios sin guardar. ¿Estás seguro de que deseas salir de esta página?')
+          if (!confirmar) {
+            e.preventDefault()
+            e.stopPropagation()
+          }
+        }
+      }
+    }
+
+    document.addEventListener('click', handleAnchorClick, true)
+    return () => document.removeEventListener('click', handleAnchorClick, true)
+  }, [form, guardadoExitoso])
 
   useEffect(() => {
     async function fetchData() {
-      const { data: c } = await supabase.from('choferes').select('CHOFER')
+      const { data: c } = await supabase.from('choferes').select('CHOFER, "DOC. ID."')
       const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
       if (c) setChoferes(c)
       if (cl) setClientes(cl)
     }
     fetchData()
   }, [])
+
+  const handleChoferChange = (nombreChofer: string) => {
+    const choferSeleccionado = choferes.find(c => c.CHOFER === nombreChofer)
+    const dni = choferSeleccionado ? choferSeleccionado["DOC. ID."] : ''
+    
+    setForm({
+      ...form,
+      chofer: nombreChofer,
+      dni_chofer: dni || ''
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,7 +114,12 @@ export default function FletesPage() {
     if (error) {
       alert("Error en la base de datos: " + error.message)
     } else {
+      // Marcamos como guardado exitoso para que el navegador deje salir al usuario sin alertas
+      setGuardadoExitoso(true)
       alert("¡Operación cargada con éxito!")
+      // Opcional: Reiniciamos el formulario al estado inicial
+      setForm({ ...ESTADO_INICIAL })
+      setGuardadoExitoso(false)
     }
   }
 
@@ -60,22 +127,21 @@ export default function FletesPage() {
     if (form.tipo_operacion === 'importacion') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="text" placeholder="Nº Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} />
-          <input type="text" placeholder="Tipo de Contenedor" className="border p-2" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} />
-          <input type="text" placeholder="Origen" className="border p-2" onChange={(e) => setForm({...form, origen: e.target.value})} />
+          <input type="text" placeholder="Nº Contenedor" className="border p-2" value={form.contenedor_num} onChange={(e) => setForm({...form, contenedor_num: e.target.value})} />
+          <input type="text" placeholder="Tipo de Contenedor" className="border p-2" value={form.contenedor_tipo} onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} />
+          <input type="text" placeholder="Origen" className="border p-2" value={form.origen} onChange={(e) => setForm({...form, origen: e.target.value})} />
           <div>
             <label className="text-xs font-bold text-slate-500">Fecha de Carga</label>
-            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
+            <input type="datetime-local" className="w-full border p-2" value={form.fecha_hora} onChange={(e) => setForm({...form, fecha_hora: e.target.value})} />
           </div>
-          <input type="text" placeholder="Paradas" className="border p-2" onChange={(e) => setForm({...form, paradas: e.target.value})} />
-          <input type="text" placeholder="Destino" className="border p-2" onChange={(e) => setForm({...form, destino: e.target.value})} />
-          <input type="text" placeholder="Lugar Devolucion" className="border p-2" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
+          <input type="text" placeholder="Paradas" className="border p-2" value={form.paradas} onChange={(e) => setForm({...form, paradas: e.target.value})} />
+          <input type="text" placeholder="Destino" className="border p-2" value={form.destino} onChange={(e) => setForm({...form, destino: e.target.value})} />
+          <input type="text" placeholder="Lugar Devolucion" className="border p-2" value={form.lugar_devolucion} onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} />
           <div>
             <label className="text-xs font-bold text-slate-500">Libre Hasta</label>
-            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
+            <input type="datetime-local" className="w-full border p-2" value={form.libre_hasta} onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
           </div>
           
-          {/* NUEVO CAMPO TRAM */}
           <div>
             <label className="text-xs font-bold text-slate-500">¿Es TRAM?</label>
             <select 
@@ -94,13 +160,13 @@ export default function FletesPage() {
     if (form.tipo_operacion === 'exportacion') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="text" placeholder="Lugar Carga Vacío" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} />
+          <input type="text" placeholder="Lugar Carga Vacío" className="border p-2" value={form.lugar_carga_vacio} onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} />
           <div>
             <label className="text-xs font-bold text-slate-500">Fecha Carga Vacío</label>
-            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} />
+            <input type="datetime-local" className="w-full border p-2" value={form.fecha_carga_vacio} onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} />
           </div>
-          <input type="text" placeholder="Lugar Carga Mercadería" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} />
-          <input type="text" placeholder="Lugar Entrega Lleno" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega_lleno: e.target.value})} />
+          <input type="text" placeholder="Lugar Carga Mercadería" className="border p-2" value={form.lugar_carga_mercaderia} onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} />
+          <input type="text" placeholder="Lugar Entrega Lleno" className="border p-2" value={form.lugar_entrega_lleno} onChange={(e) => setForm({...form, lugar_entrega_lleno: e.target.value})} />
         </div>
       )
     }
@@ -108,14 +174,14 @@ export default function FletesPage() {
     if (form.tipo_operacion === 'carga_suelta') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="text" placeholder="Lugar de Carga" className="border p-2" onChange={(e) => setForm({...form, lugar_carga: e.target.value})} />
+          <input type="text" placeholder="Lugar de Carga" className="border p-2" value={form.lugar_carga} onChange={(e) => setForm({...form, lugar_carga: e.target.value})} />
           <div>
             <label className="text-xs font-bold text-slate-500">Fecha/Hora Carga</label>
-            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} />
+            <input type="datetime-local" className="w-full border p-2" value={form.fecha_hora_carga} onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} />
           </div>
-          <input type="text" placeholder="Lugar de Entrega" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} />
-          <input type="text" placeholder="Cantidad y Tipo de Bultos" className="border p-2" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} />
-          <input type="text" placeholder="Peso Bruto" className="border p-2" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} />
+          <input type="text" placeholder="Lugar de Entrega" className="border p-2" value={form.lugar_entrega} onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} />
+          <input type="text" placeholder="Cantidad y Tipo de Bultos" className="border p-2" value={form.cantidad_bultos} onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} />
+          <input type="text" placeholder="Peso Bruto" className="border p-2" value={form.peso_bruto} onChange={(e) => setForm({...form, peso_bruto: e.target.value})} />
         </div>
       )
     }
@@ -141,27 +207,37 @@ export default function FletesPage() {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input type="text" placeholder="Número de FN" className="border p-2" onChange={(e) => setForm({...form, numero_fn: e.target.value})} />
-        <select required className="border p-2 rounded" onChange={e => setForm({...form, cliente: e.target.value})}>
+        <input type="text" placeholder="Número de FN" className="border p-2" value={form.numero_fn} onChange={(e) => setForm({...form, numero_fn: e.target.value})} />
+        
+        <select required className="border p-2 rounded" value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})}>
           <option value="">Seleccionar Cliente *</option>
           {clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]}>{c["Razon Social"]}</option>)}
         </select>
-        <select required className="border p-2 rounded" onChange={e => setForm({...form, chofer: e.target.value})}>
+        
+        <select required className="border p-2 rounded" value={form.chofer} onChange={e => handleChoferChange(e.target.value)}>
           <option value="">Seleccionar Chofer *</option>
           {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
         </select>
         
-        <input type="text" placeholder="Teléfono del Chofer" className="border p-2" onChange={(e) => setForm({...form, telefono_chofer: e.target.value})} />
+        <input 
+          type="text" 
+          placeholder="DNI Chofer" 
+          className="border p-2 bg-gray-50" 
+          value={form.dni_chofer} 
+          onChange={(e) => setForm({...form, dni_chofer: e.target.value})} 
+        />
         
-        <input type="text" placeholder="Documento Aduanero" className="border p-2" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} />
-        <input type="text" placeholder="Patente Camión" className="border p-2" onChange={(e) => setForm({...form, patente_camion: e.target.value})} />
-        <input type="text" placeholder="Patente Semi" className="border p-2" onChange={(e) => setForm({...form, patente_semi: e.target.value})} />
+        <input type="text" placeholder="Teléfono del Chofer" className="border p-2" value={form.telefono_chofer} onChange={(e) => setForm({...form, telefono_chofer: e.target.value})} />
+        
+        <input type="text" placeholder="Documento Aduanero" className="border p-2" value={form.documento_aduanero} onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} />
+        <input type="text" placeholder="Patente Camión" className="border p-2" value={form.patente_camion} onChange={(e) => setForm({...form, patente_camion: e.target.value})} />
+        <input type="text" placeholder="Patente Semi" className="border p-2" value={form.patente_semi} onChange={(e) => setForm({...form, patente_semi: e.target.value})} />
       </div>
 
       {renderCamposSegunTipo()}
 
       <label className="block text-sm font-bold">Notas Adicionales:</label>
-      <textarea className="w-full border p-2 h-24" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
+      <textarea className="w-full border p-2 h-24" value={form.notas_adicionales} onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
 
       <button type="submit" className="bg-sky-600 text-white w-full p-4 font-bold text-lg rounded shadow-lg hover:bg-blue-700">
         Guardar Operación

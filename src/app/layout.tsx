@@ -3,7 +3,7 @@ import { useState } from 'react'
 import './globals.css'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [isSidebarOpen, setSidebarOpen] = useState(true) // Por defecto abierta para comodidad
 
   return (
     <html lang="es">
@@ -18,7 +18,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         )}
 
         {/* Barra Lateral */}
-        {/* Cambiamos fixed por md:relative para que en pantallas grandes desplace el contenido */}
         <aside className={`
           fixed md:relative z-50 h-screen 
           ${isSidebarOpen ? 'w-64' : 'w-0'} 
@@ -27,8 +26,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="w-64 h-full flex flex-col"> 
             <div className="p-6 font-bold text-xl border-b border-slate-700">GM CARGO SRL</div>
             <nav className="p-4 space-y-2 flex-1">
-              <a href="/" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Operaciones</a>
-              <a href="/fletes" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Nueva Operación</a>
+              <a 
+                href="/" 
+                className="block p-3 hover:bg-slate-700 rounded transition-colors" 
+                onClick={() => setSidebarOpen(false)}
+              >
+                Operaciones
+              </a>
+              <a 
+                href="/fletes" 
+                className="block p-3 hover:bg-slate-700 rounded transition-colors" 
+                onClick={() => setSidebarOpen(false)}
+              >
+                Nueva Operación
+              </a>
+              {/* NUEVA SOLAPA DE TERMINADOS */}
+              <a 
+                href="/terminados" 
+                className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" 
+                onClick={() => setSidebarOpen(false)}
+              >
+                Terminados
+              </a>
             </nav>
           </div>
         </aside>

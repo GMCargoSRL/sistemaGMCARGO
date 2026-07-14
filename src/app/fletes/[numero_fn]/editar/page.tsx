@@ -35,21 +35,43 @@ export default function EditarFletePage() {
 
   useEffect(() => {
     async function fetchData() {
-      const { data: c } = await supabase.from('choferes').select('CHOFER')
+      // 1. Traemos la lista de choferes con su respectivo "DOC. ID."
+      const { data: listadoChoferes } = await supabase.from('choferes').select('CHOFER, "DOC. ID."')
       const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
       
+      // 2. Traemos los datos de la operación actual
       const { data: flete } = await supabase
         .from('fletes_nacionales')
         .select('*')
         .eq('numero_fn', numero_fn)
         .single()
 
-      if (c) setChoferes(c)
+      if (listadoChoferes) setChoferes(listadoChoferes)
       if (cl) setClientes(cl)
-      if (flete) setForm(flete)
+      
+      if (flete) {
+        // 3. Si el flete no tiene un 'dni_chofer' guardado aún, lo buscamos en el listado para auto-completarlo de entrada
+        if (!flete.dni_chofer && flete.chofer && listadoChoferes) {
+          const choferEncontrado = listadoChoferes.find(c => c.CHOFER === flete.chofer)
+          flete.dni_chofer = choferEncontrado ? choferEncontrado["DOC. ID."] : ''
+        }
+        setForm(flete)
+      }
     }
     fetchData()
   }, [numero_fn])
+
+  // Lógica dinámica: Al cambiar de chofer en el selector, busca su "DOC. ID." y actualiza el estado
+  const handleChoferChange = (nombreChofer: string) => {
+    const choferSeleccionado = choferes.find(c => c.CHOFER === nombreChofer)
+    const dni = choferSeleccionado ? choferSeleccionado["DOC. ID."] : ''
+    
+    setForm({
+      ...form,
+      chofer: nombreChofer,
+      dni_chofer: dni || '' // Se auto-completa el DNI al instante
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -85,10 +107,21 @@ export default function EditarFletePage() {
         </Field>
 
         <Field label="Chofer">
-          <select value={form.chofer || ''} className="border p-2 rounded" onChange={e => setForm({...form, chofer: e.target.value})}>
+          <select value={form.chofer || ''} className="border p-2 rounded" onChange={e => handleChoferChange(e.target.value)}>
             <option value="">Seleccionar Chofer</option>
             {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
           </select>
+        </Field>
+
+        {/* CAMPO DNI: AUTO-COMPLETADO Y TOTALMENTE EDITABLE */}
+        <Field label="DNI Chofer">
+          <input 
+            type="text" 
+            value={form.dni_chofer || ''} 
+            className="border p-2 rounded bg-white focus:bg-sky-50 transition-colors" 
+            placeholder="DNI"
+            onChange={(e) => setForm({...form, dni_chofer: e.target.value})} 
+          />
         </Field>
 
         <Field label="Teléfono del Chofer">
@@ -116,7 +149,6 @@ export default function EditarFletePage() {
             <Field label="Lugar Devolución"><input type="text" value={form.lugar_devolucion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} /></Field>
             <Field label="Libre Hasta"><input type="datetime-local" value={formatDatetime(form.libre_hasta)} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} /></Field>
             
-            {/* NUEVO CAMPO TRAM EN EDICIÓN */}
             <Field label="¿Es TRAM?">
               <select 
                 value={form.tram || 'NO'} 
@@ -132,7 +164,6 @@ export default function EditarFletePage() {
 
         {form.tipo_operacion === 'exportacion' && (
           <>
-            {/* Campos de Contenedor agregados también a exportación para que puedas modificarlos aquí */}
             <Field label="Nº Contenedor"><input type="text" value={form.contenedor_num || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} /></Field>
             <Field label="Tipo de Contenedor"><input type="text" value={form.contenedor_tipo || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
             
