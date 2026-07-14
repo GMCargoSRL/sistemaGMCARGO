@@ -96,6 +96,38 @@ export default function FletesPage() {
     })
   }
 
+  // NUEVA FUNCIÓN: Generar correlativo VN automático
+  const generarVN = async () => {
+    // Buscamos todos los fletes que empiecen con 'VN-'
+    const { data, error } = await supabase
+      .from('fletes_nacionales')
+      .select('numero_fn')
+      .ilike('numero_fn', 'VN-%')
+
+    if (error) {
+      alert("Error al buscar el correlativo: " + error.message)
+      return
+    }
+
+    let maxNum = 0
+    
+    if (data && data.length > 0) {
+      data.forEach(item => {
+        const numPart = item.numero_fn.replace('VN-', '')
+        const num = parseInt(numPart, 10)
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num
+        }
+      })
+    }
+
+    // Le sumamos 1 al máximo (empieza en VN-0001 si no hay nada)
+    const nextNum = maxNum + 1
+    const nextVN = `VN-${nextNum.toString().padStart(4, '0')}`
+
+    setForm({ ...form, numero_fn: nextVN })
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.cliente || !form.chofer) {
@@ -114,10 +146,8 @@ export default function FletesPage() {
     if (error) {
       alert("Error en la base de datos: " + error.message)
     } else {
-      // Marcamos como guardado exitoso para que el navegador deje salir al usuario sin alertas
       setGuardadoExitoso(true)
       alert("¡Operación cargada con éxito!")
-      // Opcional: Reiniciamos el formulario al estado inicial
       setForm({ ...ESTADO_INICIAL })
       setGuardadoExitoso(false)
     }
@@ -207,7 +237,26 @@ export default function FletesPage() {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input type="text" placeholder="Número de FN" className="border p-2" value={form.numero_fn} onChange={(e) => setForm({...form, numero_fn: e.target.value})} />
+        
+        {/* NUEVO BLOQUE: Input + Botón para FN/VN */}
+        <div className="flex gap-2 w-full">
+          <input 
+            type="text" 
+            placeholder="Nº Op. (Ej: FN-1234)" 
+            className="border p-2 flex-1 rounded uppercase placeholder:normal-case" 
+            value={form.numero_fn} 
+            onChange={(e) => setForm({...form, numero_fn: e.target.value.toUpperCase()})} 
+            required
+          />
+          <button 
+            type="button" 
+            onClick={generarVN}
+            className="bg-indigo-600 text-white px-3 py-2 rounded font-bold text-sm shadow hover:bg-indigo-700 transition"
+            title="Generar Viaje Nacional correlativo"
+          >
+            Generar VN
+          </button>
+        </div>
         
         <select required className="border p-2 rounded" value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})}>
           <option value="">Seleccionar Cliente *</option>
