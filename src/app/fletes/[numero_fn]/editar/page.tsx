@@ -91,7 +91,6 @@ export default function EditarFletePage() {
           </select>
         </Field>
 
-        {/* NUEVO CAMPO AGREGADO AQUÍ */}
         <Field label="Teléfono del Chofer">
           <input 
             type="text" 
@@ -116,11 +115,27 @@ export default function EditarFletePage() {
             <Field label="Destino"><input type="text" value={form.destino || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, destino: e.target.value})} /></Field>
             <Field label="Lugar Devolución"><input type="text" value={form.lugar_devolucion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} /></Field>
             <Field label="Libre Hasta"><input type="datetime-local" value={formatDatetime(form.libre_hasta)} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} /></Field>
+            
+            {/* NUEVO CAMPO TRAM EN EDICIÓN */}
+            <Field label="¿Es TRAM?">
+              <select 
+                value={form.tram || 'NO'} 
+                className="border p-2 rounded" 
+                onChange={e => setForm({...form, tram: e.target.value})}
+              >
+                <option value="NO">NO</option>
+                <option value="SI">SI</option>
+              </select>
+            </Field>
           </>
         )}
 
         {form.tipo_operacion === 'exportacion' && (
           <>
+            {/* Campos de Contenedor agregados también a exportación para que puedas modificarlos aquí */}
+            <Field label="Nº Contenedor"><input type="text" value={form.contenedor_num || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} /></Field>
+            <Field label="Tipo de Contenedor"><input type="text" value={form.contenedor_tipo || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
+            
             <Field label="Lugar Carga Vacío"><input type="text" value={form.lugar_carga_vacio || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} /></Field>
             <Field label="Fecha Carga Vacío"><input type="datetime-local" value={formatDatetime(form.fecha_carga_vacio)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} /></Field>
             <Field label="Lugar Carga Mercadería"><input type="text" value={form.lugar_carga_mercaderia || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} /></Field>
@@ -140,7 +155,7 @@ export default function EditarFletePage() {
       </div>
 
       <Field label="Notas Adicionales">
-        <textarea value={form.notas_adicionales || ''} className="w-full border p-2 h-24 rounded" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
+        <textarea value={form.notes_adicionales || form.notas_adicionales || ''} className="w-full border p-2 h-24 rounded" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
       </Field>
 
       <button type="submit" className="bg-sky-600 text-white w-full p-4 font-bold rounded shadow-lg hover:bg-blue-700">

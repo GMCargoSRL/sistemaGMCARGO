@@ -45,9 +45,15 @@ export default function Dashboard() {
     }
 
     const startY = 60
+
+    // Modificamos la etiqueta "Tipo Operación" para concatenar "(TRAM: SI/NO)" únicamente si es IMPORTACION
+    const tipoOperacionTexto = flete.tipo_operacion === 'importacion'
+      ? `IMPORTACION (TRAM: ${flete.tram?.toUpperCase() || 'NO'})`
+      : (flete.tipo_operacion?.toUpperCase() || ' ');
+
     const datosGenerales = [
       `Cliente: ${flete.cliente || ' '}`,
-      `Tipo Operación: ${flete.tipo_operacion?.toUpperCase() || ' '}`,
+      `Tipo Operación: ${tipoOperacionTexto}`,
       `Documento Aduanero: ${flete.documento_aduanero || ' '}`
     ]
 

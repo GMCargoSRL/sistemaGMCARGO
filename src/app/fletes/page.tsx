@@ -20,7 +20,8 @@ export default function FletesPage() {
     lugar_carga_mercaderia: '', lugar_entrega_lleno: '',
     lugar_carga: '', fecha_hora_carga: '', documento_aduanero: '', 
     cantidad_bultos: '', peso_bruto: '', lugar_entrega: '',
-    tipo_operacion: 'importacion'
+    tipo_operacion: 'importacion',
+    tram: 'NO' // <-- Agregado al estado inicial
   })
 
   useEffect(() => {
@@ -56,7 +57,6 @@ export default function FletesPage() {
   }
 
   const renderCamposSegunTipo = () => {
-    // ... (el resto de tu lógica de renderizado se mantiene igual)
     if (form.tipo_operacion === 'importacion') {
       return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -74,10 +74,51 @@ export default function FletesPage() {
             <label className="text-xs font-bold text-slate-500">Libre Hasta</label>
             <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} />
           </div>
+          
+          {/* NUEVO CAMPO TRAM */}
+          <div>
+            <label className="text-xs font-bold text-slate-500">¿Es TRAM?</label>
+            <select 
+              className="w-full border p-2 rounded" 
+              value={form.tram} 
+              onChange={(e) => setForm({...form, tram: e.target.value})}
+            >
+              <option value="NO">NO</option>
+              <option value="SI">SI</option>
+            </select>
+          </div>
         </div>
       )
     }
-    // (Asegúrate de copiar el resto de bloques de exportacion y carga_suelta aquí)
+    
+    if (form.tipo_operacion === 'exportacion') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="text" placeholder="Lugar Carga Vacío" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} />
+          <div>
+            <label className="text-xs font-bold text-slate-500">Fecha Carga Vacío</label>
+            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} />
+          </div>
+          <input type="text" placeholder="Lugar Carga Mercadería" className="border p-2" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} />
+          <input type="text" placeholder="Lugar Entrega Lleno" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega_lleno: e.target.value})} />
+        </div>
+      )
+    }
+
+    if (form.tipo_operacion === 'carga_suelta') {
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <input type="text" placeholder="Lugar de Carga" className="border p-2" onChange={(e) => setForm({...form, lugar_carga: e.target.value})} />
+          <div>
+            <label className="text-xs font-bold text-slate-500">Fecha/Hora Carga</label>
+            <input type="datetime-local" className="w-full border p-2" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} />
+          </div>
+          <input type="text" placeholder="Lugar de Entrega" className="border p-2" onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} />
+          <input type="text" placeholder="Cantidad y Tipo de Bultos" className="border p-2" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} />
+          <input type="text" placeholder="Peso Bruto" className="border p-2" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} />
+        </div>
+      )
+    }
     return null
   }
 
@@ -110,7 +151,6 @@ export default function FletesPage() {
           {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
         </select>
         
-        {/* NUEVO CAMPO */}
         <input type="text" placeholder="Teléfono del Chofer" className="border p-2" onChange={(e) => setForm({...form, telefono_chofer: e.target.value})} />
         
         <input type="text" placeholder="Documento Aduanero" className="border p-2" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} />
