@@ -62,7 +62,6 @@ export default function FletesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Limpiar fechas vacías a null para evitar errores de tipo timestamp
     const dataToSend = { ...form }
     const dateFields = ['fecha_hora', 'fecha_carga_vacio', 'fecha_hora_carga', 'libre_hasta']
 
@@ -77,7 +76,7 @@ export default function FletesPage() {
     if (error) {
       alert("Error: " + error.message)
     } else { 
-      alert("¡Operación cargada con éxito!")
+      alert("¡Operación cargada con éxito!"); 
       setForm({ ...ESTADO_INICIAL }) 
     }
   }
@@ -88,12 +87,21 @@ export default function FletesPage() {
 
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Datos de Operación</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <select className="border p-2 rounded" value={form.tipo_operacion} onChange={e => setForm({...form, tipo_operacion: e.target.value})}>
-            <option value="importacion">Contenedor de Importación/TRM</option>
-            <option value="exportacion">Contenedor de Exportación</option>
+            <option value="importacion">Importación/TRM</option>
+            <option value="exportacion">Exportación</option>
             <option value="carga_suelta">Carga Suelta</option>
           </select>
+          
+          <div className="flex items-center gap-2 border p-2 rounded bg-white">
+            <label className="text-sm text-gray-600 font-bold">TRAM:</label>
+            <select className="flex-1 outline-none" value={form.tram} onChange={e => setForm({...form, tram: e.target.value})}>
+              <option value="NO">NO</option>
+              <option value="SI">SI</option>
+            </select>
+          </div>
+
           <div className="flex gap-2">
             <input type="text" placeholder="Nº Op. (VN-0001)" className="border p-2 flex-1 rounded uppercase" value={form.numero_fn} onChange={(e) => setForm({...form, numero_fn: e.target.value.toUpperCase()})} />
             <button type="button" onClick={generarVN} className="bg-indigo-600 text-white px-3 rounded font-bold text-sm">Generar</button>
@@ -102,7 +110,7 @@ export default function FletesPage() {
           <input 
             list="lista-clientes" 
             placeholder="Seleccionar o escribir Cliente *" 
-            className="border p-2 rounded" 
+            className="border p-2 rounded md:col-span-2" 
             value={form.cliente} 
             onChange={e => setForm({...form, cliente: e.target.value})} 
           />
@@ -114,6 +122,7 @@ export default function FletesPage() {
         </div>
       </section>
 
+      {/* ... El resto de las secciones se mantienen igual ... */}
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Detalles de la Carga</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
