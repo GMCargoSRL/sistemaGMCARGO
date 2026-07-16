@@ -5,7 +5,7 @@ import { createBrowserClient } from '@supabase/ssr'
 
 const Field = ({ label, children }: { label: string, children: React.ReactNode }) => (
   <div className="flex flex-col space-y-1">
-    <label className="text-sm font-semibold text-gray-700">{label}</label>
+    <label className="text-[10px] uppercase font-bold text-gray-400">{label}</label>
     {children}
   </div>
 )
@@ -24,148 +24,133 @@ export default function EditarFletePage() {
   const [choferes, setChoferes] = useState<any[]>([])
   const [form, setForm] = useState<any>(null)
 
-  // CORRECCIÓN: Función que limpia el string para evitar conversiones UTC
-  const formatDatetime = (dateString: string | null) => {
-    if (!dateString) return '';
-    return dateString.substring(0, 16);
-  };
-
   useEffect(() => {
     async function fetchData() {
-      const { data: listadoChoferes } = await supabase.from('choferes').select('CHOFER, "DOC. ID."')
+      const { data: c } = await supabase.from('choferes').select('CHOFER, "DOC. ID."')
       const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
-      
-      const { data: flete } = await supabase
-        .from('fletes_nacionales')
-        .select('*')
-        .eq('numero_fn', numero_fn)
-        .single()
+      const { data: flete } = await supabase.from('fletes_nacionales').select('*').eq('numero_fn', numero_fn).single()
 
-      if (listadoChoferes) setChoferes(listadoChoferes)
+      if (c) setChoferes(c)
       if (cl) setClientes(cl)
-      
-      if (flete) {
-        if (!flete.dni_chofer && flete.chofer && listadoChoferes) {
-          const choferEncontrado = listadoChoferes.find(c => c.CHOFER === flete.chofer)
-          flete.dni_chofer = choferEncontrado ? choferEncontrado["DOC. ID."] : ''
-        }
-        setForm(flete)
-      }
+      if (flete) setForm(flete)
     }
     fetchData()
   }, [numero_fn])
 
   const handleChoferChange = (nombreChofer: string) => {
-    const choferSeleccionado = choferes.find(c => c.CHOFER === nombreChofer)
-    const dni = choferSeleccionado ? choferSeleccionado["DOC. ID."] : ''
-    
-    setForm({
-      ...form,
-      chofer: nombreChofer,
-      dni_chofer: dni || ''
+    const choferSeleccionado = choferes.find(ch => ch.CHOFER === nombreChofer)
+    setForm({ 
+      ...form, 
+      chofer: nombreChofer, 
+      dni_chofer: choferSeleccionado ? choferSeleccionado["DOC. ID."] : '' 
     })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const formLimpio = { ...form }
-    Object.keys(formLimpio).forEach(key => {
-      if (formLimpio[key] === '') formLimpio[key] = null
-    })
-
-    const { error } = await supabase
-      .from('fletes_nacionales')
-      .update(formLimpio)
-      .eq('numero_fn', numero_fn)
-      
+    const { error } = await supabase.from('fletes_nacionales').update(form).eq('numero_fn', numero_fn)
     if (error) alert("Error: " + error.message)
-    else {
-      alert("¡Cambios guardados con éxito!")
-      router.push('/')
-    }
+    else { alert("¡Cambios guardados!"); router.push('/') }
   }
 
   if (!form) return <div className="p-8">Cargando datos...</div>
 
   return (
-    <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-6">
-      <h2 className="text-xl font-bold border-b pb-4">Editar Operación: {numero_fn} ({form.tipo_operacion})</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Field label="Cliente">
-          <select value={form.cliente || ''} className="border p-2 rounded" onChange={e => setForm({...form, cliente: e.target.value})}>
-            <option value="">Seleccionar Cliente</option>
-            {clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]}>{c["Razon Social"]}</option>)}
-          </select>
-        </Field>
+    <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-8 bg-gray-50 min-h-screen">
+      <h2 className="text-2xl font-bold text-gray-800 border-b pb-4">Editar Operación: {numero_fn}</h2>
 
-        <Field label="Chofer">
-          <select value={form.chofer || ''} className="border p-2 rounded" onChange={e => handleChoferChange(e.target.value)}>
-            <option value="">Seleccionar Chofer</option>
-            {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER}>{c.CHOFER}</option>)}
-          </select>
-        </Field>
+      {/* DATOS DE OPERACIÓN */}
+      <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Datos de Operación</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Tipo de Operación">
+            <select className="border p-2 rounded w-full" value={form.tipo_operacion || ''} onChange={e => setForm({...form, tipo_operacion: e.target.value})}>
+              <option value="importacion">Contenedor de Importación/TRM</option>
+              <option value="exportacion">Contenedor de Exportación</option>
+              <option value="carga_suelta">Carga Suelta</option>
+            </select>
+          </Field>
+          <Field label="Cliente">
+            <input list="lista-clientes" className="border p-2 rounded w-full" value={form.cliente || ''} onChange={e => setForm({...form, cliente: e.target.value})} />
+            <datalist id="lista-clientes">{clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]} />)}</datalist>
+          </Field>
+          <Field label="Documento Aduanero"><input type="text" className="border p-2 rounded w-full" value={form.documento_aduanero || ''} onChange={e => setForm({...form, documento_aduanero: e.target.value})} /></Field>
+        </div>
+      </section>
 
-        <Field label="DNI Chofer">
-          <input type="text" value={form.dni_chofer || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, dni_chofer: e.target.value})} />
-        </Field>
+      {/* DETALLES DE LA CARGA */}
+      <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Detalles de la Carga</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {form.tipo_operacion === 'importacion' && (
+            <>
+              <Field label="Nº Contenedor"><input type="text" className="border p-2 rounded w-full" value={form.contenedor_num || ''} onChange={e => setForm({...form, contenedor_num: e.target.value})} /></Field>
+              <Field label="Tipo Contenedor"><input type="text" className="border p-2 rounded w-full" value={form.contenedor_tipo || ''} onChange={e => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
+              <Field label="Origen"><input type="text" className="border p-2 rounded w-full" value={form.origen || ''} onChange={e => setForm({...form, origen: e.target.value})} /></Field>
+              <Field label="Fecha Carga"><input type="datetime-local" className="border p-2 rounded w-full" value={form.fecha_hora ? form.fecha_hora.substring(0, 16) : ''} onChange={e => setForm({...form, fecha_hora: e.target.value})} /></Field>
+              <Field label="Paradas"><input type="text" className="border p-2 rounded w-full" value={form.paradas || ''} onChange={e => setForm({...form, paradas: e.target.value})} /></Field>
+              <Field label="Destino"><input type="text" className="border p-2 rounded w-full" value={form.destino || ''} onChange={e => setForm({...form, destino: e.target.value})} /></Field>
+              <Field label="Lugar Devolución"><input type="text" className="border p-2 rounded w-full" value={form.lugar_devolucion || ''} onChange={e => setForm({...form, lugar_devolucion: e.target.value})} /></Field>
+              <Field label="Libre Hasta"><input type="date" className="border p-2 rounded w-full" value={form.libre_hasta ? form.libre_hasta.substring(0, 10) : ''} onChange={e => setForm({...form, libre_hasta: e.target.value})} /></Field>
+            </>
+          )}
 
-        <Field label="Teléfono del Chofer">
-          <input type="text" value={form.telefono_chofer || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, telefono_chofer: e.target.value})} />
-        </Field>
+          {form.tipo_operacion === 'exportacion' && (
+            <>
+              <Field label="Nº Contenedor"><input type="text" className="border p-2 rounded w-full" value={form.contenedor_num || ''} onChange={e => setForm({...form, contenedor_num: e.target.value})} /></Field>
+              <Field label="Lugar Carga Vacío"><input type="text" className="border p-2 rounded w-full" value={form.lugar_carga_vacio || ''} onChange={e => setForm({...form, lugar_carga_vacio: e.target.value})} /></Field>
+              <Field label="Fecha Carga Vacío"><input type="datetime-local" className="border p-2 rounded w-full" value={form.fecha_carga_vacio ? form.fecha_carga_vacio.substring(0, 16) : ''} onChange={e => setForm({...form, fecha_carga_vacio: e.target.value})} /></Field>
+              <Field label="Lugar Carga Mercadería"><input type="text" className="border p-2 rounded w-full" value={form.lugar_carga_mercaderia || ''} onChange={e => setForm({...form, lugar_carga_mercaderia: e.target.value})} /></Field>
+            </>
+          )}
 
-        <Field label="Documento Aduanero"><input type="text" value={form.documento_aduanero || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, documento_aduanero: e.target.value})} /></Field>
-        <Field label="Patente Camión"><input type="text" value={form.patente_camion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_camion: e.target.value})} /></Field>
-        <Field label="Patente Semi"><input type="text" value={form.patente_semi || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, patente_semi: e.target.value})} /></Field>
+          {form.tipo_operacion === 'carga_suelta' && (
+            <>
+              <Field label="Lugar Carga"><input type="text" className="border p-2 rounded w-full" value={form.lugar_carga || ''} onChange={e => setForm({...form, lugar_carga: e.target.value})} /></Field>
+              <Field label="Lugar Entrega"><input type="text" className="border p-2 rounded w-full" value={form.lugar_entrega || ''} onChange={e => setForm({...form, lugar_entrega: e.target.value})} /></Field>
+              <Field label="Cantidad Bultos"><input type="text" className="border p-2 rounded w-full" value={form.cantidad_bultos || ''} onChange={e => setForm({...form, cantidad_bultos: e.target.value})} /></Field>
+              <Field label="Peso Bruto"><input type="text" className="border p-2 rounded w-full" value={form.peso_bruto || ''} onChange={e => setForm({...form, peso_bruto: e.target.value})} /></Field>
+            </>
+          )}
+        </div>
+      </section>
 
-        {form.tipo_operacion === 'importacion' && (
-          <>
-            <Field label="Nº Contenedor"><input type="text" value={form.contenedor_num || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} /></Field>
-            <Field label="Tipo de Contenedor"><input type="text" value={form.contenedor_tipo || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
-            <Field label="Origen"><input type="text" value={form.origen || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, origen: e.target.value})} /></Field>
-            <Field label="Fecha de Carga"><input type="datetime-local" value={formatDatetime(form.fecha_hora)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora: e.target.value})} /></Field>
-            <Field label="Paradas"><input type="text" value={form.paradas || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, paradas: e.target.value})} /></Field>
-            <Field label="Destino"><input type="text" value={form.destino || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, destino: e.target.value})} /></Field>
-            <Field label="Lugar Devolución"><input type="text" value={form.lugar_devolucion || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_devolucion: e.target.value})} /></Field>
-            <Field label="Libre Hasta"><input type="datetime-local" value={formatDatetime(form.libre_hasta)} className="border p-2 rounded" onChange={(e) => setForm({...form, libre_hasta: e.target.value})} /></Field>
-            <Field label="¿Es TRAM?">
-              <select value={form.tram || 'NO'} className="border p-2 rounded" onChange={e => setForm({...form, tram: e.target.value})}>
-                <option value="NO">NO</option>
-                <option value="SI">SI</option>
-              </select>
-            </Field>
-          </>
-        )}
+      {/* CHOFER Y UNIDAD */}
+      <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Chofer y Unidad</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field label="Chofer">
+            <input list="lista-choferes" className="border p-2 rounded w-full" value={form.chofer || ''} onChange={e => handleChoferChange(e.target.value)} />
+            <datalist id="lista-choferes">{choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER} />)}</datalist>
+          </Field>
+          <Field label="DNI Chofer"><input type="text" className="border p-2 rounded w-full" value={form.dni_chofer || ''} onChange={e => setForm({...form, dni_chofer: e.target.value})} /></Field>
+          <Field label="Teléfono del Chofer"><input type="text" className="border p-2 rounded w-full" value={form.telefono_chofer || ''} onChange={e => setForm({...form, telefono_chofer: e.target.value})} /></Field>
+          <Field label="Patente Camión"><input type="text" className="border p-2 rounded w-full" value={form.patente_camion || ''} onChange={e => setForm({...form, patente_camion: e.target.value})} /></Field>
+          <Field label="Patente Semi"><input type="text" className="border p-2 rounded w-full" value={form.patente_semi || ''} onChange={e => setForm({...form, patente_semi: e.target.value})} /></Field>
+        </div>
+      </section>
 
-        {form.tipo_operacion === 'exportacion' && (
-          <>
-            <Field label="Nº Contenedor"><input type="text" value={form.contenedor_num || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_num: e.target.value})} /></Field>
-            <Field label="Tipo de Contenedor"><input type="text" value={form.contenedor_tipo || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, contenedor_tipo: e.target.value})} /></Field>
-            <Field label="Lugar Carga Vacío"><input type="text" value={form.lugar_carga_vacio || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_vacio: e.target.value})} /></Field>
-            <Field label="Fecha Carga Vacío"><input type="datetime-local" value={formatDatetime(form.fecha_carga_vacio)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_carga_vacio: e.target.value})} /></Field>
-            <Field label="Lugar Carga Mercadería"><input type="text" value={form.lugar_carga_mercaderia || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga_mercaderia: e.target.value})} /></Field>
-            <Field label="Lugar Entrega Lleno"><input type="text" value={form.lugar_entrega_lleno || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_entrega_lleno: e.target.value})} /></Field>
-          </>
-        )}
+      {/* NOTAS ADICIONALES */}
+      <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Notas Adicionales</h3>
+        <textarea 
+          className="w-full border p-2 rounded" 
+          rows={4}
+          value={form.notas_adicionales || ''} 
+          onChange={e => setForm({...form, notas_adicionales: e.target.value})} 
+        />
+      </section>
 
-        {form.tipo_operacion === 'carga_suelta' && (
-          <>
-            <Field label="Lugar de Carga"><input type="text" value={form.lugar_carga || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_carga: e.target.value})} /></Field>
-            <Field label="Fecha/Hora Carga"><input type="datetime-local" value={formatDatetime(form.fecha_hora_carga)} className="border p-2 rounded" onChange={(e) => setForm({...form, fecha_hora_carga: e.target.value})} /></Field>
-            <Field label="Lugar de Entrega"><input type="text" value={form.lugar_entrega || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, lugar_entrega: e.target.value})} /></Field>
-            <Field label="Cantidad y Tipo de Bultos"><input type="text" value={form.cantidad_bultos || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, cantidad_bultos: e.target.value})} /></Field>
-            <Field label="Peso Bruto"><input type="text" value={form.peso_bruto || ''} className="border p-2 rounded" onChange={(e) => setForm({...form, peso_bruto: e.target.value})} /></Field>
-          </>
-        )}
+      {/* BOTONES */}
+      <div className="flex flex-col gap-3">
+        <button type="submit" className="w-full bg-sky-600 text-white p-4 font-bold rounded-lg hover:bg-sky-700 transition">
+          Guardar Cambios
+        </button>
+        <button type="button" onClick={() => router.push('/')} className="w-full bg-white text-gray-600 p-4 font-bold rounded-lg border border-gray-300 hover:bg-gray-50 transition">
+          Cancelar
+        </button>
       </div>
-
-      <Field label="Notas Adicionales">
-        <textarea value={form.notas_adicionales || ''} className="w-full border p-2 h-24 rounded" onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
-      </Field>
-
-      <button type="submit" className="bg-sky-600 text-white w-full p-4 font-bold rounded shadow-lg hover:bg-blue-700">
-        Guardar Cambios
-      </button>
     </form>
   )
 }
