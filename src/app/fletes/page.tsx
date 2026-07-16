@@ -43,7 +43,8 @@ export default function FletesPage() {
     setForm({ 
       ...form, 
       chofer: nombreChofer, 
-      dni_chofer: choferSeleccionado ? choferSeleccionado["DOC. ID."] : '' 
+      // Solo autocompletar si encontramos el chofer en la lista
+      dni_chofer: choferSeleccionado ? choferSeleccionado["DOC. ID."] : form.dni_chofer 
     })
   }
 
@@ -84,7 +85,6 @@ export default function FletesPage() {
             <button type="button" onClick={generarVN} className="bg-indigo-600 text-white px-3 rounded font-bold text-sm">Generar</button>
           </div>
           
-          {/* Input con datalist para Cliente */}
           <input 
             list="lista-clientes" 
             placeholder="Seleccionar o escribir Cliente *" 
@@ -168,7 +168,15 @@ export default function FletesPage() {
             {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER} />)}
           </datalist>
 
-          <input type="text" placeholder="DNI" className="border p-2 rounded bg-gray-50" value={form.dni_chofer} readOnly />
+          {/* DNI EDITABLE */}
+          <input 
+            type="text" 
+            placeholder="DNI" 
+            className="border p-2 rounded" 
+            value={form.dni_chofer} 
+            onChange={e => setForm({...form, dni_chofer: e.target.value})} 
+          />
+
           <input type="text" placeholder="Teléfono del Chofer" className="border p-2 rounded" value={form.telefono_chofer} onChange={e => setForm({...form, telefono_chofer: e.target.value})} />
           <div /> 
           <input type="text" placeholder="Patente Camión" className="border p-2 rounded" value={form.patente_camion} onChange={e => setForm({...form, patente_camion: e.target.value})} />
