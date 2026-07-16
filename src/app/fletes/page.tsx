@@ -43,7 +43,6 @@ export default function FletesPage() {
     setForm({ 
       ...form, 
       chofer: nombreChofer, 
-      // Solo autocompletar si encontramos el chofer en la lista
       dni_chofer: choferSeleccionado ? choferSeleccionado["DOC. ID."] : form.dni_chofer 
     })
   }
@@ -62,16 +61,31 @@ export default function FletesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const { error } = await supabase.from('fletes_nacionales').insert([form])
-    if (error) alert("Error: " + error.message)
-    else { alert("¡Operación cargada con éxito!"); setForm({ ...ESTADO_INICIAL }) }
+
+    // Limpiar fechas vacías a null para evitar errores de tipo timestamp
+    const dataToSend = { ...form }
+    const dateFields = ['fecha_hora', 'fecha_carga_vacio', 'fecha_hora_carga', 'libre_hasta']
+
+    dateFields.forEach(field => {
+      if (dataToSend[field as keyof typeof dataToSend] === '') {
+        (dataToSend as any)[field] = null
+      }
+    })
+
+    const { error } = await supabase.from('fletes_nacionales').insert([dataToSend])
+    
+    if (error) {
+      alert("Error: " + error.message)
+    } else { 
+      alert("¡Operación cargada con éxito!")
+      setForm({ ...ESTADO_INICIAL }) 
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-8 bg-gray-50 min-h-screen">
       <h2 className="text-2xl font-bold text-gray-800 border-b pb-4">Carga de Nueva Operación</h2>
 
-      {/* DATOS DE OPERACIÓN */}
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Datos de Operación</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -100,11 +114,9 @@ export default function FletesPage() {
         </div>
       </section>
 
-      {/* DETALLES DE LA CARGA */}
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Detalles de la Carga</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          
           {form.tipo_operacion === 'importacion' && (
             <>
               <input type="text" placeholder="Nº Contenedor" className="border p-2 rounded" value={form.contenedor_num} onChange={e => setForm({...form, contenedor_num: e.target.value})} />
@@ -153,7 +165,6 @@ export default function FletesPage() {
         </div>
       </section>
 
-      {/* CHOFER Y UNIDAD */}
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Chofer y Unidad</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -168,7 +179,6 @@ export default function FletesPage() {
             {choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER} />)}
           </datalist>
 
-          {/* DNI EDITABLE */}
           <input 
             type="text" 
             placeholder="DNI" 
