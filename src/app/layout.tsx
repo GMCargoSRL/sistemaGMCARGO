@@ -1,15 +1,24 @@
 'use client'
 import { useState } from 'react'
 import './globals.css'
+import { metadata } from './layout-metadata' // Importamos los metadatos
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setSidebarOpen] = useState(true) // Por defecto abierta para comodidad
+  const [isSidebarOpen, setSidebarOpen] = useState(true)
 
   return (
     <html lang="es">
+      <head>
+        <title>{metadata.title}</title>
+        <meta name="description" content={metadata.description} />
+        <link rel="manifest" href={metadata.manifest} />
+        <meta name="theme-color" content={metadata.themeColor} />
+        <meta name="viewport" content={metadata.viewport} />
+        <link rel="apple-touch-icon" href="/icon-192x192.png" />
+      </head>
       <body className="flex min-h-screen bg-gray-50">
         
-        {/* Overlay para cerrar el menú en móviles (solo aparece cuando está abierto) */}
+        {/* Overlay para cerrar el menú en móviles */}
         {isSidebarOpen && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
@@ -26,28 +35,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="w-64 h-full flex flex-col"> 
             <div className="p-6 font-bold text-xl border-b border-slate-700">GM CARGO SRL</div>
             <nav className="p-4 space-y-2 flex-1">
-              <a 
-                href="/" 
-                className="block p-3 hover:bg-slate-700 rounded transition-colors" 
-                onClick={() => setSidebarOpen(false)}
-              >
-                Operaciones
-              </a>
-              <a 
-                href="/fletes" 
-                className="block p-3 hover:bg-slate-700 rounded transition-colors" 
-                onClick={() => setSidebarOpen(false)}
-              >
-                Nueva Operación
-              </a>
-              {/* NUEVA SOLAPA DE TERMINADOS */}
-              <a 
-                href="/terminados" 
-                className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" 
-                onClick={() => setSidebarOpen(false)}
-              >
-                Terminados
-              </a>
+              <a href="/" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Operaciones</a>
+              <a href="/fletes" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Nueva Operación</a>
+              <a href="/terminados" className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Terminados</a>
             </nav>
           </div>
         </aside>
