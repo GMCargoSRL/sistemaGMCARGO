@@ -1,7 +1,7 @@
 {
-  "name": "Seguimiento de Cargas",
-  "short_name": "Cargas",
-  "description": "App de gestión y seguimiento de fletes",
+  "name": "Gestión de Fletes GM Cargo",
+  "short_name": "GM Cargo",
+  "description": "Sistema de gestión de fletes y operaciones",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

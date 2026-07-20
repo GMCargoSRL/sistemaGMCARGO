@@ -13,10 +13,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <title>{metadata.title}</title>
         <meta name="description" content={metadata.description} />
-        <link rel="manifest" href={metadata.manifest} />
-        <meta name="theme-color" content={metadata.themeColor} />
-        <meta name="viewport" content={metadata.viewport} />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content={metadata.themeColor || '#0284c7'} />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
+        <link rel="icon" type="image/png" href="/icon-192x192.png" />
       </head>
       <body className="flex min-h-screen bg-gray-50 overflow-x-auto">
         
