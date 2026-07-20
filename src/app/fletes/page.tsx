@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { useRouter } from 'next/navigation' // <-- Añadido para navegación (ir a inicio)
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 const ESTADO_INICIAL = { 
@@ -21,7 +21,7 @@ const ESTADO_INICIAL = {
 const formatDateTimeLocal = (dateString: string) => dateString ? dateString.substring(0, 16) : '';
 
 export default function FletesPage() {
-  const router = useRouter() // <-- Hook de navegación
+  const router = useRouter()
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -32,10 +32,8 @@ export default function FletesPage() {
   const [form, setForm] = useState({ ...ESTADO_INICIAL })
   const [cargandoDatos, setCargandoDatos] = useState(true)
 
-  // Estado para controlar el cartel de éxito y la operación recién guardada
   const [operacionGuardada, setOperacionGuardada] = useState<any | null>(null)
 
-  // Detectar si hay datos sin guardar para prevenir cierre accidental de pestaña
   useEffect(() => {
     const hayDatosCargados = Object.entries(form).some(([key, value]) => {
       if (key === 'tipo_operacion') return value !== 'importacion'
@@ -83,7 +81,8 @@ export default function FletesPage() {
     let maxNum = 0
     if (data && data.length > 0) {
       data.forEach(item => {
-        const num = parseInt(item.numero_fn.replace('VN-', ''), 10)
+        const numStr = item.numero_fn.replace('VN-', '').replace(/[A-Z]/g, '')
+        const num = parseInt(numStr, 10)
         if (!isNaN(num) && num > maxNum) maxNum = num
       })
     }
@@ -91,8 +90,90 @@ export default function FletesPage() {
     toast.success("Número de operación generado correctamente")
   }
 
+  const handleNuevoVNCorrelativo = async (mantenerDatos: boolean) => {
+    const { data } = await supabase.from('fletes_nacionales').select('numero_fn').ilike('numero_fn', 'VN-%')
+    let maxNum = 0
+    if (data && data.length > 0) {
+      data.forEach(item => {
+        const numStr = item.numero_fn.replace('VN-', '').replace(/[A-Z]/g, '')
+        const num = parseInt(numStr, 10)
+        if (!isNaN(num) && num > maxNum) maxNum = num
+      })
+    }
+    const nuevoNumero = `VN-${(maxNum + 1).toString().padStart(4, '0')}`
+
+    setOperacionGuardada(null)
+    if (mantenerDatos) {
+      setForm(prev => ({
+        ...prev,
+        numero_fn: nuevoNumero,
+        contenedor_num: '',
+        contenedor_tipo: '',
+        documento_aduanero: '',
+        cantidad_bultos: '',
+        peso_bruto: ''
+      }))
+      toast.success(`Se abrió el siguiente VN correlativo manteniendo los datos: ${nuevoNumero}`)
+    } else {
+      setForm({ ...ESTADO_INICIAL, numero_fn: nuevoNumero })
+      toast.success(`Se abrió un nuevo VN correlativo limpio: ${nuevoNumero}`)
+    }
+  }
+
+  const handleMismoVNCorrelativo = async (fleteAnterior: any) => {
+    const vnActual = fleteAnterior.numero_fn || ''
+    let siguienteVN = ''
+
+    const matchLetra = vnActual.match(/^(VN-\d+)([A-Z])$/)
+    if (matchLetra) {
+      const base = matchLetra[1]
+      const letraActual = matchLetra[2]
+      const siguienteLetra = String.fromCharCode(letraActual.charCodeAt(0) + 1)
+      siguienteVN = `${base}${siguienteLetra}`
+    } else {
+      const matchBase = vnActual.match(/^VN-\d+$/)
+      if (matchBase) {
+        siguienteVN = `${vnActual}A`
+      } else {
+        const { data } = await supabase.from('fletes_nacionales').select('numero_fn').ilike('numero_fn', 'VN-%')
+        let maxNum = 0
+        if (data && data.length > 0) {
+          data.forEach(item => {
+            const numStr = item.numero_fn.replace('VN-', '').replace(/[A-Z]/g, '')
+            const num = parseInt(numStr, 10)
+            if (!isNaN(num) && num > maxNum) maxNum = num
+          })
+        }
+        siguienteVN = `VN-${maxNum.toString().padStart(4, '0')}A`
+      }
+    }
+
+    setOperacionGuardada(null)
+    setForm({
+      ...fleteAnterior,
+      numero_fn: siguienteVN,
+      contenedor_num: '',
+      contenedor_tipo: '',
+      fecha_hora: '',
+      lugar_devolucion: '',
+      libre_hasta: '',
+      chofer: '',
+      dni_chofer: '',
+      telefono_chofer: '',
+      patente_camion: '',
+      patente_semi: ''
+    })
+    toast.success(`Se generó el VN correlativo: ${siguienteVN}`)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // --- VALIDACIÓN: Evitar guardar sin número de operación ---
+    if (!form.numero_fn || form.numero_fn.trim() === '') {
+      toast.error("¡Atención! Debes ingresar o generar un Número de Operación (VN) antes de guardar.")
+      return
+    }
 
     if (form.cliente && !clientes.find(c => c["Razon Social"] === form.cliente)) {
       await supabase.from('clientes').insert([{ "Razon Social": form.cliente }])
@@ -114,17 +195,15 @@ export default function FletesPage() {
     })
 
     const { error } = await supabase.from('fletes_nacionales').insert([dataToSend])
-    
+     
     if (error) {
       toast.error("Error: " + error.message)
     } else { 
       toast.success("¡Operación cargada con éxito!")
-      // Activamos el cartel y guardamos la data enviada para usar en el PDF o limpieza posterior
       setOperacionGuardada(dataToSend)
     }
   }
 
-  // --- LÓGICA GENERAR PDF RÁPIDO DESDE EL CARTEL ---
   const generarPDF = async (flete: any) => {
     const { jsPDF } = require("jspdf")
     const doc = new jsPDF()
@@ -216,7 +295,7 @@ export default function FletesPage() {
             <option value="exportacion">Exportación</option>
             <option value="carga_suelta">Carga Suelta</option>
           </select>
-          
+           
           {form.tipo_operacion === 'importacion' ? (
             <div className="flex items-center gap-2 border p-2 rounded bg-white">
               <label className="text-xs text-gray-600 font-bold whitespace-nowrap">TRAM:</label>
@@ -228,10 +307,10 @@ export default function FletesPage() {
           ) : <div className="hidden md:block" />}
 
           <div className="flex gap-2 md:col-span-2">
-            <input type="text" placeholder="Nº Op. (VN-0001)" className="border p-2 flex-1 rounded uppercase" value={form.numero_fn} onChange={(e) => setForm({...form, numero_fn: e.target.value.toUpperCase()})} />
+            <input type="text" placeholder="Nº Op. (VN-0001) *" required className="border p-2 flex-1 rounded uppercase" value={form.numero_fn} onChange={(e) => setForm({...form, numero_fn: e.target.value.toUpperCase()})} />
             <button type="button" onClick={generarVN} className="bg-sky-600 hover:bg-sky-700 text-white px-4 rounded font-bold text-sm transition">Generar</button>
           </div>
-          
+           
           <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-3" value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})} />
           <datalist id="lista-clientes">
             {clientes.filter((c: any) => c && c["Razon Social"]).map((c: any) => (
@@ -298,7 +377,7 @@ export default function FletesPage() {
       </section>
 
       <textarea className="w-full border p-4 rounded-lg" placeholder="Notas adicionales..." value={form.notas_adicionales} onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
-      
+       
       <div className="flex flex-col gap-3">
         <button type="submit" className="w-full bg-sky-600 text-white p-4 font-bold rounded-lg hover:bg-sky-700 transition shadow-lg">Guardar Operación</button>
         <button type="button" onClick={handleCancelar} className="w-full bg-red-400 text-white p-3 font-bold rounded-lg hover:bg-red-500 transition">Cancelar</button>
@@ -309,8 +388,7 @@ export default function FletesPage() {
       {operacionGuardada && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border border-gray-100 text-center animate-in fade-in zoom-in duration-200">
-            
-            {/* Ícono de éxito */}
+             
             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-emerald-600 text-3xl font-bold">✓</span>
             </div>
@@ -320,7 +398,6 @@ export default function FletesPage() {
               La operación <span className="font-bold text-gray-800">{operacionGuardada.numero_fn || 'registrada'}</span> se guardó correctamente. ¿Qué te gustaría hacer ahora?
             </p>
 
-            {/* Opciones de próximos pasos */}
             <div className="flex flex-col gap-3">
               <button 
                 onClick={() => generarPDF(operacionGuardada)}
@@ -330,13 +407,17 @@ export default function FletesPage() {
               </button>
 
               <button 
-                onClick={() => {
-                  setOperacionGuardada(null)
-                  setForm({ ...ESTADO_INICIAL })
-                }}
+                onClick={() => handleMismoVNCorrelativo(operacionGuardada)}
+                className="w-full py-2.5 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 border border-indigo-200"
+              >
+                🔁 Abrir mismo VN correlativo (ej. VN-0007B)
+              </button>
+
+              <button 
+                onClick={() => handleNuevoVNCorrelativo(false)}
                 className="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 text-sky-700 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 border border-sky-200"
               >
-                ➕ Abrir una nueva operación
+                ➕ Abrir nuevo VN correlativo
               </button>
 
               <button 

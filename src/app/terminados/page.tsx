@@ -14,6 +14,9 @@ export default function Terminados() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // Estado para el modal de confirmación de eliminación
+  const [opAEliminar, setOpAEliminar] = useState<string | null>(null)
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -190,10 +193,12 @@ export default function Terminados() {
 
   useEffect(() => { getFletes() }, [orden])
 
-  async function eliminarFlete(numero_fn: string) {
-    if (confirm(`¿Estás seguro de eliminar la operación ${numero_fn}?`)) {
-      await supabase.from('fletes_nacionales').delete().eq('numero_fn', numero_fn)
-      setFletes(fletes.filter((f: any) => f.numero_fn !== numero_fn))
+  // Confirmar y eliminar definitivamente (Reemplaza al antiguo eliminarFlete con confirm nativo)
+  async function confirmarEliminarFlete() {
+    if (opAEliminar) {
+      await supabase.from('fletes_nacionales').delete().eq('numero_fn', opAEliminar)
+      setFletes(fletes.filter((f: any) => f.numero_fn !== opAEliminar))
+      setOpAEliminar(null)
     }
   }
 
@@ -301,34 +306,19 @@ export default function Terminados() {
                 <td className="p-3 text-sm text-gray-700">{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</td>
                 <td className="p-3">
                   <details className="cursor-pointer group">
-                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{f.notas_adicionales?.length > 20 ? f.notas_adicionales.substring(0, 20) + "..." : f.notas_adicionales || '-'}</summary>
-                    <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales}</div>
+                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{(f.notas_adicionales || f.notes_adicionales)?.length > 20 ? (f.notas_adicionales || f.notes_adicionales).substring(0, 20) + "..." : (f.notas_adicionales || f.notes_adicionales) || '-'}</summary>
+                    <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales || f.notes_adicionales}</div>
                   </details>
                 </td>
                 <td className="p-3">
-                  <select 
-                    className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${getEstadoStyle(f.estado)}`} 
-                    value={f.estado || 'TERMINADO'} 
-                    onChange={async (e) => { 
-                      const nuevoEstado = e.target.value; 
-                      await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
-                      
-                      if (nuevoEstado !== 'TERMINADO') {
-                        setFletes(fletes.filter((item: any) => item.numero_fn !== f.numero_fn));
-                      } else {
-                        setFletes(fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item)); 
-                      }
-                    }}
-                  >
-                    <option value="EN PREPARACIÓN">EN PREPARACIÓN</option>
-                    <option value="EN CURSO">EN CURSO</option>
-                    <option value="TERMINADO">TERMINADO</option>
-                  </select>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold border inline-block ${getEstadoStyle(f.estado)}`}>
+                    {f.estado || 'TERMINADO'}
+                  </span>
                 </td>
                 <td className="p-3 flex gap-2">
                   <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold hover:underline">EDITAR</button>
                   <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold hover:underline">ORDEN DE FLETE</button>
-                  <button onClick={() => eliminarFlete(f.numero_fn)} className="text-red-500 text-xs font-bold hover:underline">ELIMINAR</button>
+                  <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 text-xs font-bold hover:underline">ELIMINAR</button>
                 </td>
               </tr>
             )
@@ -336,12 +326,41 @@ export default function Terminados() {
           {fletesFiltrados.length === 0 && (
             <tr>
               <td colSpan={11} className="p-8 text-center text-gray-400 text-sm">
-                No hay operaciones guardadas en el historial.
+                No hay operaciones terminadas registradas.
               </td>
             </tr>
           )}
         </tbody>
       </table>
+
+      {/* --- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN --- */}
+      {opAEliminar && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-gray-100 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-600 text-2xl font-bold">⚠️</span>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">¿Confirmar eliminación?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              ¿Estás seguro de eliminar la operación <span className="font-bold text-gray-800">{opAEliminar}</span>? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button 
+                onClick={() => setOpAEliminar(null)} 
+                className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-sm font-semibold rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmarEliminarFlete} 
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 transition text-sm font-semibold rounded-lg shadow-sm"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
