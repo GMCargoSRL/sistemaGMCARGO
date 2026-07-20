@@ -8,14 +8,12 @@ export default function Dashboard() {
   const [orden, setOrden] = useState<'asc' | 'desc'>('desc')
   const [busqueda, setBusqueda] = useState('')
   
-  // Estados para el modal/menú de exportación
   const [mostrarMenuExportar, setMostrarMenuExportar] = useState(false)
   const [modoExportar, setModoExportar] = useState<'ninguno' | 'rango'>('ninguno')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Estado para el modal de confirmación de eliminación
   const [opAEliminar, setOpAEliminar] = useState<string | null>(null)
   
   const supabase = createBrowserClient(
@@ -23,7 +21,6 @@ export default function Dashboard() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  // Cerrar menú al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -34,26 +31,28 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // --- LÓGICA EXPORTAR A EXCEL ---
   const ejecutarExportacion = (datosAExportar: any[], nombreArchivo: string) => {
     if (!datosAExportar || datosAExportar.length === 0) {
       alert("No hay datos para exportar con los criterios seleccionados.")
       return
     }
 
-    // Limpiar y formatear datos para que el Excel sea legible
-    const datosLimpios = datosAExportar.map(f => ({
-      "Operación": f.numero_fn || '',
-      "Cliente": f.cliente || '',
-      "Tipo Operación": f.tipo_operacion || '',
-      "Fecha y Hora": f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga ? new Date(f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga).toLocaleString('es-AR') : '',
-      "Chofer": f.chofer || '',
-      "Camión": f.patente_camion || '',
-      "Semi": f.patente_semi || '',
-      "Contenedor": f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : '',
-      "Estado": f.estado || 'EN PREPARACIÓN',
-      "Comentarios": f.notas_adicionales || f.notes_adicionales || ''
-    }))
+    const datosLimpios = datosAExportar.map(f => {
+      const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
+      const esTram = valorTram === 'SI';
+      return {
+        "Operación": f.numero_fn || '',
+        "Cliente": f.cliente || '',
+        "Tipo Operación": esTram ? 'TRÁNSITO' : (f.tipo_operacion || ''),
+        "Fecha y Hora": f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga ? new Date(f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga).toLocaleString('es-AR') : '',
+        "Chofer": f.chofer || '',
+        "Camión": f.patente_camion || '',
+        "Semi": f.patente_semi || '',
+        "Contenedor": f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : '',
+        "Estado": f.estado || 'EN PREPARACIÓN',
+        "Comentarios": f.notas_adicionales || f.notes_adicionales || ''
+      }
+    })
 
     const worksheet = XLSX.utils.json_to_sheet(datosLimpios)
     const workbook = XLSX.utils.book_new()
@@ -73,7 +72,6 @@ export default function Dashboard() {
       return
     }
 
-    // Consultar a Supabase el rango de fechas en curso
     const { data, error } = await supabase
       .from('fletes_nacionales')
       .select('*')
@@ -89,7 +87,6 @@ export default function Dashboard() {
     ejecutarExportacion(data || [], `Operaciones_En_Curso_${fechaDesde}_al_${fechaHasta}`)
   }
 
-  // --- LÓGICA GENERAR PDF ---
   const generarPDF = async (flete: any) => {
     const { jsPDF } = require("jspdf")
     const doc = new jsPDF()
@@ -138,9 +135,10 @@ export default function Dashboard() {
     }
 
     const startY = 60
+    const valorTramPDF = String(flete.tram || flete.trm || 'NO').trim().toUpperCase();
 
     const tipoOperacionTexto = flete.tipo_operacion === 'importacion'
-      ? `IMPORTACION (TRAM: ${flete.tram?.toUpperCase() || 'NO'})`
+      ? `IMPORTACION (TRAM: ${valorTramPDF})`
       : (flete.tipo_operacion?.toUpperCase() || ' ');
 
     const datosGenerales = [
@@ -216,7 +214,6 @@ export default function Dashboard() {
 
   useEffect(() => { getFletes() }, [orden])
 
-  // Confirmar y eliminar definitivamente
   async function confirmarEliminarFlete() {
     if (opAEliminar) {
       await supabase.from('fletes_nacionales').delete().eq('numero_fn', opAEliminar)
@@ -245,7 +242,6 @@ export default function Dashboard() {
             Ordenar: {orden === 'asc' ? 'Antiguos' : 'Recientes'}
           </button>
 
-          {/* Botón y Menú Desplegable de Exportación */}
           <div className="relative" ref={menuRef}>
             <button 
               onClick={() => {
@@ -318,11 +314,17 @@ export default function Dashboard() {
           {fletesFiltrados.map((f: any) => {
             const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
             const estadoActual = f.estado || 'EN PREPARACIÓN';
+            
+            // Verificación infalible: lee tanto 'tram' como 'trm' sin importar mayúsculas/minúsculas
+            const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
+            const esTram = valorTram === 'SI';
+            const tipoMostrar = esTram ? 'TRÁNSITO' : (f.tipo_operacion || '-');
+
             return (
               <tr key={f.numero_fn} className="border-t hover:bg-gray-50 transition">
                 <td className="p-3 font-medium text-gray-900">{f.numero_fn}</td>
                 <td className="p-3 text-sm text-gray-700">{f.cliente || '-'}</td>
-                <td className="p-3 text-xs font-bold uppercase text-gray-500">{f.tipo_operacion || '-'}</td>
+                <td className="p-3 text-xs font-bold uppercase text-gray-500">{tipoMostrar}</td>
                 <td className="p-3 text-sm text-gray-700">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
                 <td className="p-3 text-sm text-gray-700">{f.chofer}</td>
                 <td className="p-3 text-sm text-gray-700">{f.patente_camion}</td>
@@ -372,7 +374,6 @@ export default function Dashboard() {
         </tbody>
       </table>
 
-      {/* --- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN --- */}
       {opAEliminar && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
           <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-gray-100 text-center">
