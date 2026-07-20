@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import { toast } from 'sonner' // <-- Añadido para disparar notificaciones
 
 const ESTADO_INICIAL = { 
   numero_fn: '', cliente: '', chofer: '', dni_chofer: '', telefono_chofer: '', contenedor_num: '', 
@@ -27,6 +28,7 @@ export default function FletesPage() {
   const [clientes, setClientes] = useState<any[]>([])
   const [choferes, setChoferes] = useState<any[]>([])
   const [form, setForm] = useState({ ...ESTADO_INICIAL })
+  const [cargandoDatos, setCargandoDatos] = useState(true) // <-- Añadido para controlar el Skeleton de carga inicial
 
   // Detectar si hay datos sin guardar para prevenir cierre accidental de pestaña
   useEffect(() => {
@@ -49,10 +51,12 @@ export default function FletesPage() {
 
   useEffect(() => {
     async function fetchData() {
+      setCargandoDatos(true) // Activar animación de carga
       const { data: c } = await supabase.from('choferes').select('*')
       const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
       if (c) setChoferes(c)
       if (cl) setClientes(cl)
+      setCargandoDatos(false) // Desactivar animación al recibir los datos
     }
     fetchData()
   }, [])
@@ -79,6 +83,7 @@ export default function FletesPage() {
       })
     }
     setForm({ ...form, numero_fn: `VN-${(maxNum + 1).toString().padStart(4, '0')}` })
+    toast.success("Número de operación generado correctamente") // <-- Toast sutil en lugar de nada
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,15 +111,34 @@ export default function FletesPage() {
     const { error } = await supabase.from('fletes_nacionales').insert([dataToSend])
     
     if (error) {
-      alert("Error: " + error.message)
+      toast.error("Error: " + error.message) // <-- Notificación flotante de error
     } else { 
-      alert("¡Operación cargada con éxito!"); 
+      toast.success("¡Operación cargada con éxito!") // <-- Notificación flotante de éxito
       setForm({ ...ESTADO_INICIAL }) 
     }
   }
 
   const handleCancelar = () => {
     setForm({ ...ESTADO_INICIAL })
+    toast.info("Formulario blanqueado") // <-- Aviso flotante de acción
+  }
+
+  // --- SKELETON: Muestra bloques grises animados mientras Supabase responde al inicio ---
+  if (cargandoDatos) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto space-y-8 animate-pulse">
+        <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-48 space-y-4">
+          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="h-10 bg-gray-200 rounded col-span-1"></div>
+            <div className="h-10 bg-gray-200 rounded col-span-2"></div>
+            <div className="h-10 bg-gray-200 rounded col-span-1"></div>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-64"></div>
+      </div>
+    )
   }
 
   return (

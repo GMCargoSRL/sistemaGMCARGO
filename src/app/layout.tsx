@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import './globals.css'
 import { metadata } from './layout-metadata'
+import { Toaster } from 'sonner' // <-- Añadido para las notificaciones flotantes
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
@@ -64,6 +65,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
           </div>
         </main>
+
+        {/* Componente que renderiza los avisos flotantes */}
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   )
