@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import Link from 'next/link'
 import './globals.css'
 import { metadata } from './layout-metadata'
 
@@ -16,9 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="viewport" content={metadata.viewport} />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
-      <body className="flex min-h-screen bg-gray-50">
+      <body className="flex min-h-screen bg-gray-50 overflow-x-auto">
         
-        {/* Overlay sin blur: solo el oscurecido */}
+        {/* Overlay para móviles */}
         {isSidebarOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40 md:hidden"
@@ -26,28 +27,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         )}
 
-        {/* Barra Lateral */}
+        {/* Barra Lateral con ancho fijo real y flex-shrink-0 para que nunca se deforme */}
         <aside className={`
-          fixed md:sticky top-0 z-50 h-screen 
-          ${isSidebarOpen ? 'w-64' : 'w-0'} 
-          transition-all duration-300 ease-in-out bg-slate-900 text-white shadow-2xl overflow-hidden
+          fixed md:static inset-y-0 left-0 z-50 
+          ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-0'} 
+          transition-all duration-300 ease-in-out bg-slate-900 text-white shadow-2xl flex-shrink-0 overflow-hidden
         `}>
           <div className="w-64 h-full flex flex-col"> 
-            <div className="p-6 font-bold text-xl border-b border-slate-700 flex justify-between items-center">
+            <div className="p-6 font-bold text-xl border-b border-slate-700 flex justify-between items-center whitespace-nowrap">
               GM CARGO SRL
               <button className="md:hidden p-2" onClick={() => setSidebarOpen(false)}>✕</button>
             </div>
-            <nav className="p-4 space-y-2 flex-1">
-              <a href="/" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Operaciones</a>
-              <a href="/fletes" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Nueva Operación</a>
-              <a href="/terminados" className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Terminados</a>
+            <nav className="p-4 space-y-2 flex-1 whitespace-nowrap">
+              <Link href="/" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Operaciones</Link>
+              <Link href="/fletes" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Nueva Operación</Link>
+              <Link href="/terminados" className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Terminados</Link>
             </nav>
           </div>
         </aside>
 
         {/* Contenido Principal */}
-        <main className="flex-1 flex flex-col min-w-0 w-full">
-          <header className="bg-white shadow-sm p-4 flex items-center sticky top-0 z-40">
+        <main className="flex-1 flex flex-col min-w-max">
+          <header className="bg-white shadow-sm p-4 flex items-center sticky top-0 z-30 w-full">
             <button 
               className="p-2 text-slate-600 hover:bg-gray-100 rounded-lg transition-colors"
               onClick={() => setSidebarOpen(!isSidebarOpen)}

@@ -28,6 +28,25 @@ export default function FletesPage() {
   const [choferes, setChoferes] = useState<any[]>([])
   const [form, setForm] = useState({ ...ESTADO_INICIAL })
 
+  // Detectar si hay datos sin guardar para prevenir cierre accidental de pestaña
+  useEffect(() => {
+    const hayDatosCargados = Object.entries(form).some(([key, value]) => {
+      if (key === 'tipo_operacion') return value !== 'importacion'
+      if (key === 'tram') return value !== 'NO'
+      return value !== ''
+    })
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hayDatosCargados) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [form])
+
   useEffect(() => {
     async function fetchData() {
       const { data: c } = await supabase.from('choferes').select('*')
@@ -43,8 +62,10 @@ export default function FletesPage() {
     setForm({ 
       ...form, 
       chofer: nombre,
-      dni_chofer: seleccionado ? seleccionado["DOC. ID."] : '',
-      telefono_chofer: seleccionado ? seleccionado.TEL : ''
+      dni_chofer: seleccionado ? (seleccionado["DOC. ID."] || '') : '',
+      telefono_chofer: seleccionado ? (seleccionado.TEL || '') : '',
+      patente_camion: seleccionado ? (seleccionado.patente_camion || '') : '',
+      patente_semi: seleccionado ? (seleccionado.patente_semi || '') : ''
     })
   }
 
@@ -67,7 +88,13 @@ export default function FletesPage() {
       await supabase.from('clientes').insert([{ "Razon Social": form.cliente }])
     }
     if (form.chofer && !choferes.find(c => c.CHOFER === form.chofer)) {
-      await supabase.from('choferes').insert([{ "CHOFER": form.chofer, "DOC. ID.": form.dni_chofer, "TEL": form.telefono_chofer }])
+      await supabase.from('choferes').insert([{ 
+        "CHOFER": form.chofer, 
+        "DOC. ID.": form.dni_chofer, 
+        "TEL": form.telefono_chofer,
+        "patente_camion": form.patente_camion,
+        "patente_semi": form.patente_semi
+      }])
     }
 
     const dataToSend = { ...form }
@@ -86,8 +113,20 @@ export default function FletesPage() {
     }
   }
 
+  const handleCancelar = () => {
+    setForm({ ...ESTADO_INICIAL })
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="p-8 max-w-4xl mx-auto space-y-8 bg-gray-50 min-h-screen">
+    <form 
+      onSubmit={handleSubmit} 
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+          e.preventDefault()
+        }
+      }}
+      className="p-8 max-w-4xl mx-auto space-y-8 bg-gray-50 min-h-screen"
+    >
       <h2 className="text-2xl font-bold text-gray-800 border-b pb-4">Carga de Nueva Operación</h2>
 
       <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -111,11 +150,15 @@ export default function FletesPage() {
 
           <div className="flex gap-2 md:col-span-2">
             <input type="text" placeholder="Nº Op. (VN-0001)" className="border p-2 flex-1 rounded uppercase" value={form.numero_fn} onChange={(e) => setForm({...form, numero_fn: e.target.value.toUpperCase()})} />
-            <button type="button" onClick={generarVN} className="bg-indigo-600 text-white px-3 rounded font-bold text-sm">Generar</button>
+            <button type="button" onClick={generarVN} className="bg-sky-600 hover:bg-sky-700 text-white px-4 rounded font-bold text-sm transition">Generar</button>
           </div>
           
           <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-3" value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})} />
-          <datalist id="lista-clientes">{clientes.map((c: any) => <option key={c["Razon Social"]} value={c["Razon Social"]} />)}</datalist>
+          <datalist id="lista-clientes">
+            {clientes.filter((c: any) => c && c["Razon Social"]).map((c: any) => (
+              <option key={c["Razon Social"]} value={c["Razon Social"]} />
+            ))}
+          </datalist>
 
           <input type="text" placeholder="Documento Aduanero" className="border p-2 rounded md:col-span-1" value={form.documento_aduanero} onChange={e => setForm({...form, documento_aduanero: e.target.value})} />
         </div>
@@ -150,7 +193,7 @@ export default function FletesPage() {
             <>
               <input type="text" placeholder="Lugar de Carga" className="border p-2 rounded" value={form.lugar_carga} onChange={e => setForm({...form, lugar_carga: e.target.value})} />
               <div className="flex flex-col"><label className="text-[10px] uppercase font-bold text-gray-400">Fecha/Hora Carga</label><input type="datetime-local" className="border p-2 rounded" value={formatDateTimeLocal(form.fecha_hora_carga)} onChange={e => setForm({...form, fecha_hora_carga: e.target.value})} /></div>
-              <input type="text" placeholder="Lugar de Entrega" className="border p-2 rounded" value={form.lugar_entrega} onChange={e => setForm({...form, lugar_entrega: e.target.value})} />
+              <input type="text" placeholder="Lugar de Entrega" className="border p-2 rounded col-span-1 md:col-span-2" value={form.lugar_entrega} onChange={e => setForm({...form, lugar_entrega: e.target.value})} />
               <input type="text" placeholder="Cantidad y Tipo de Bultos" className="border p-2 rounded" value={form.cantidad_bultos} onChange={e => setForm({...form, cantidad_bultos: e.target.value})} />
               <input type="text" placeholder="Peso Bruto" className="border p-2 rounded" value={form.peso_bruto} onChange={e => setForm({...form, peso_bruto: e.target.value})} />
             </>
@@ -162,16 +205,25 @@ export default function FletesPage() {
         <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Chofer y Unidad</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input list="lista-choferes" placeholder="Seleccionar o escribir Chofer *" className="border p-2 rounded" value={form.chofer} onChange={e => handleChoferChange(e.target.value)} />
-          <datalist id="lista-choferes">{choferes.map((c: any) => <option key={c.CHOFER} value={c.CHOFER} />)}</datalist>
+          <datalist id="lista-choferes">
+            {choferes.filter((c: any) => c && c.CHOFER).map((c: any) => (
+              <option key={c.CHOFER} value={c.CHOFER} />
+            ))}
+          </datalist>
           <input type="text" placeholder="DNI" className="border p-2 rounded" value={form.dni_chofer} onChange={e => setForm({...form, dni_chofer: e.target.value})} />
           <input type="text" placeholder="Teléfono" className="border p-2 rounded" value={form.telefono_chofer} onChange={e => setForm({...form, telefono_chofer: e.target.value})} />
+          <div className="hidden md:block"></div>
           <input type="text" placeholder="Patente Camión" className="border p-2 rounded" value={form.patente_camion} onChange={e => setForm({...form, patente_camion: e.target.value})} />
           <input type="text" placeholder="Patente Semi" className="border p-2 rounded" value={form.patente_semi} onChange={e => setForm({...form, patente_semi: e.target.value})} />
         </div>
       </section>
 
       <textarea className="w-full border p-4 rounded-lg" placeholder="Notas adicionales..." value={form.notas_adicionales} onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
-      <button type="submit" className="w-full bg-sky-600 text-white p-4 font-bold rounded-lg hover:bg-sky-700 transition shadow-lg">Guardar Operación</button>
+      
+      <div className="flex flex-col gap-3">
+        <button type="submit" className="w-full bg-sky-600 text-white p-4 font-bold rounded-lg hover:bg-sky-700 transition shadow-lg">Guardar Operación</button>
+        <button type="button" onClick={handleCancelar} className="w-full bg-red-400 text-white p-3 font-bold rounded-lg hover:bg-red-500 transition">Cancelar</button>
+      </div>
     </form>
   )
 }

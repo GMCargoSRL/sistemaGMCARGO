@@ -17,18 +17,15 @@ export default function Dashboard() {
     const { jsPDF } = require("jspdf")
     const doc = new jsPDF()
 
-    // 1. Buscamos el DNI de manera inteligente
     let dniChofer = 'No informado'
 
     if (flete.dni_chofer) {
-      // Si el flete ya tiene el DNI guardado directamente (gracias a la nueva columna), usamos ese (prioriza cambios manuales)
       dniChofer = flete.dni_chofer
     } else if (flete.chofer) {
-      // Fallback para fletes viejos: si no tiene 'dni_chofer' guardado pero sí tiene chofer, lo buscamos dinámicamente
       const { data: choferData } = await supabase
         .from('choferes')
         .select('"DOC. ID."')
-        .eq('CHOFER', flete.chofer) // Filtramos por la columna 'CHOFER'
+        .eq('CHOFER', flete.chofer)
         .maybeSingle()
       
       if (choferData && choferData['DOC. ID.']) {
@@ -105,7 +102,6 @@ export default function Dashboard() {
 
     const hGen = drawBox("DETALLES DE LA OPERACION", [...datosGenerales, ...datosEspecificos], 15, startY, 85, 75)
     
-    // AQUÍ SE CAMBIÓ: Ahora muestra "DNI: [número]" en lugar de "DNI Chofer"
     const hEquipo = drawBox("DATOS DEL EQUIPO", [
       `Chofer: ${flete.chofer || ' '}`,
       `DNI: ${dniChofer}`, 
@@ -121,10 +117,14 @@ export default function Dashboard() {
 
   const getEstadoStyle = (estado: string) => {
     switch (estado) {
-      case 'EN PREPARACIÓN': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'EN PREPARACIÓN': 
+      case null: 
+      case undefined: 
+      case '': 
+        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'EN CURSO': return 'bg-red-100 text-red-800 border-red-200';
       case 'TERMINADO': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-blue-100 text-blue-800 border-blue-200';
     }
   };
 
@@ -170,7 +170,7 @@ export default function Dashboard() {
       <table className="w-full bg-white border rounded-lg shadow-sm">
         <thead>
           <tr className="bg-gray-100 text-left text-sm text-gray-600">
-            <th className="p-3">FN</th>
+            <th className="p-3">Op.</th>
             <th className="p-3">Cliente</th>
             <th className="p-3">Tipo</th>
             <th className="p-3">Fecha y Hora</th>
@@ -186,6 +186,7 @@ export default function Dashboard() {
         <tbody>
           {fletesFiltrados.map((f: any) => {
             const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
+            const estadoActual = f.estado || 'EN PREPARACIÓN';
             return (
               <tr key={f.numero_fn} className="border-t hover:bg-gray-50 transition">
                 <td className="p-3 font-medium text-gray-900">{f.numero_fn}</td>
@@ -205,7 +206,7 @@ export default function Dashboard() {
                 <td className="p-3">
                   <select 
                     className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${getEstadoStyle(f.estado)}`} 
-                    value={f.estado || 'EN PREPARACIÓN'} 
+                    value={estadoActual} 
                     onChange={async (e) => { 
                       const nuevoEstado = e.target.value; 
                       await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
