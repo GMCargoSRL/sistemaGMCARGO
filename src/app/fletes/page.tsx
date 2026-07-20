@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { toast } from 'sonner' // <-- Añadido para disparar notificaciones
+import { useRouter } from 'next/navigation' // <-- Añadido para navegación (ir a inicio)
+import { toast } from 'sonner'
 
 const ESTADO_INICIAL = { 
   numero_fn: '', cliente: '', chofer: '', dni_chofer: '', telefono_chofer: '', contenedor_num: '', 
@@ -20,6 +21,7 @@ const ESTADO_INICIAL = {
 const formatDateTimeLocal = (dateString: string) => dateString ? dateString.substring(0, 16) : '';
 
 export default function FletesPage() {
+  const router = useRouter() // <-- Hook de navegación
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -28,7 +30,10 @@ export default function FletesPage() {
   const [clientes, setClientes] = useState<any[]>([])
   const [choferes, setChoferes] = useState<any[]>([])
   const [form, setForm] = useState({ ...ESTADO_INICIAL })
-  const [cargandoDatos, setCargandoDatos] = useState(true) // <-- Añadido para controlar el Skeleton de carga inicial
+  const [cargandoDatos, setCargandoDatos] = useState(true)
+
+  // Estado para controlar el cartel de éxito y la operación recién guardada
+  const [operacionGuardada, setOperacionGuardada] = useState<any | null>(null)
 
   // Detectar si hay datos sin guardar para prevenir cierre accidental de pestaña
   useEffect(() => {
@@ -51,12 +56,12 @@ export default function FletesPage() {
 
   useEffect(() => {
     async function fetchData() {
-      setCargandoDatos(true) // Activar animación de carga
+      setCargandoDatos(true)
       const { data: c } = await supabase.from('choferes').select('*')
       const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
       if (c) setChoferes(c)
       if (cl) setClientes(cl)
-      setCargandoDatos(false) // Desactivar animación al recibir los datos
+      setCargandoDatos(false)
     }
     fetchData()
   }, [])
@@ -83,7 +88,7 @@ export default function FletesPage() {
       })
     }
     setForm({ ...form, numero_fn: `VN-${(maxNum + 1).toString().padStart(4, '0')}` })
-    toast.success("Número de operación generado correctamente") // <-- Toast sutil en lugar de nada
+    toast.success("Número de operación generado correctamente")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,19 +116,68 @@ export default function FletesPage() {
     const { error } = await supabase.from('fletes_nacionales').insert([dataToSend])
     
     if (error) {
-      toast.error("Error: " + error.message) // <-- Notificación flotante de error
+      toast.error("Error: " + error.message)
     } else { 
-      toast.success("¡Operación cargada con éxito!") // <-- Notificación flotante de éxito
-      setForm({ ...ESTADO_INICIAL }) 
+      toast.success("¡Operación cargada con éxito!")
+      // Activamos el cartel y guardamos la data enviada para usar en el PDF o limpieza posterior
+      setOperacionGuardada(dataToSend)
     }
+  }
+
+  // --- LÓGICA GENERAR PDF RÁPIDO DESDE EL CARTEL ---
+  const generarPDF = async (flete: any) => {
+    const { jsPDF } = require("jspdf")
+    const doc = new jsPDF()
+
+    doc.addImage("/membrete GM CARGO.jpg", "JPG", -10, 0, 230, 297)
+    doc.setTextColor(0, 0, 0)
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(20)
+    doc.text("ORDEN DE CARGA", 20, 40)
+    doc.setFontSize(12)
+    doc.text(`${flete.numero_fn || ''}`, 160, 40)
+    doc.text(`Emitido: ${new Date().toLocaleDateString()}`, 160, 45)
+
+    const drawBox = (title: string, data: string[], x: number, y: number, w: number, maxWidth: number) => {
+      doc.setDrawColor(200, 200, 200)
+      doc.setFillColor(250, 250, 250)
+      let allLines: string[] = []
+      data.forEach(line => { allLines = allLines.concat(doc.splitTextToSize(line, maxWidth)) })
+      const h = (allLines.length * 8) + 18
+      doc.rect(x, y, w, h, 'FD')
+      doc.setTextColor(26, 68, 143)
+      doc.setFont("helvetica", "bold")
+      doc.text(title, x + 5, y + 7)
+      doc.line(x, y + 10, x + w, y + 10)
+      doc.setTextColor(0, 0, 0)
+      doc.setFont("helvetica", "normal")
+      allLines.forEach((line, i) => { doc.text(line, x + 5, y + 18 + (i * 8)) })
+      return h 
+    }
+
+    const startY = 60
+    const datosGenerales = [
+      `Cliente: ${flete.cliente || ' '}`,
+      `Tipo Operación: ${flete.tipo_operacion?.toUpperCase() || ' '}`
+    ]
+
+    const hGen = drawBox("DETALLES DE LA OPERACION", datosGenerales, 15, startY, 85, 75)
+    const hEquipo = drawBox("DATOS DEL EQUIPO", [
+      `Chofer: ${flete.chofer || ' '}`,
+      `Patente Camión: ${flete.patente_camion || ' '}`,
+      `Patente Semi: ${flete.patente_semi || ' '}`
+    ], 115, startY, 80, 70)
+
+    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || 'Sin notas adicionales.'], 15, startY + Math.max(hGen, hEquipo) + 10, 180, 170)
+
+    doc.save(`Orden Carga ${flete.numero_fn}.pdf`)
   }
 
   const handleCancelar = () => {
     setForm({ ...ESTADO_INICIAL })
-    toast.info("Formulario blanqueado") // <-- Aviso flotante de acción
+    toast.info("Formulario blanqueado")
   }
 
-  // --- SKELETON: Muestra bloques grises animados mientras Supabase responde al inicio ---
   if (cargandoDatos) {
     return (
       <div className="p-8 max-w-4xl mx-auto space-y-8 animate-pulse">
@@ -142,6 +196,7 @@ export default function FletesPage() {
   }
 
   return (
+    <>
     <form 
       onSubmit={handleSubmit} 
       onKeyDown={(e) => {
@@ -249,5 +304,52 @@ export default function FletesPage() {
         <button type="button" onClick={handleCancelar} className="w-full bg-red-400 text-white p-3 font-bold rounded-lg hover:bg-red-500 transition">Cancelar</button>
       </div>
     </form>
+
+      {/* --- CARTEL / MODAL DE ÉXITO Y PRÓXIMOS PASOS --- */}
+      {operacionGuardada && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border border-gray-100 text-center animate-in fade-in zoom-in duration-200">
+            
+            {/* Ícono de éxito */}
+            <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-emerald-600 text-3xl font-bold">✓</span>
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-1">¡Operación guardada con éxito!</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              La operación <span className="font-bold text-gray-800">{operacionGuardada.numero_fn || 'registrada'}</span> se guardó correctamente. ¿Qué te gustaría hacer ahora?
+            </p>
+
+            {/* Opciones de próximos pasos */}
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => generarPDF(operacionGuardada)}
+                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-sm"
+              >
+                📥 Descargar Orden de Flete (PDF)
+              </button>
+
+              <button 
+                onClick={() => {
+                  setOperacionGuardada(null)
+                  setForm({ ...ESTADO_INICIAL })
+                }}
+                className="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 text-sky-700 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2 border border-sky-200"
+              >
+                ➕ Abrir una nueva operación
+              </button>
+
+              <button 
+                onClick={() => router.push('/')}
+                className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl text-sm transition flex items-center justify-center gap-2"
+              >
+                🏠 Ir a la página principal
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </>
   )
 }

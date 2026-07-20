@@ -14,6 +14,9 @@ export default function Dashboard() {
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // Estado para el modal de confirmación de eliminación
+  const [opAEliminar, setOpAEliminar] = useState<string | null>(null)
   
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -213,10 +216,12 @@ export default function Dashboard() {
 
   useEffect(() => { getFletes() }, [orden])
 
-  async function eliminarFlete(numero_fn: string) {
-    if (confirm(`¿Estás seguro de eliminar la operación ${numero_fn}?`)) {
-      await supabase.from('fletes_nacionales').delete().eq('numero_fn', numero_fn)
-      setFletes(fletes.filter((f: any) => f.numero_fn !== numero_fn))
+  // Confirmar y eliminar definitivamente
+  async function confirmarEliminarFlete() {
+    if (opAEliminar) {
+      await supabase.from('fletes_nacionales').delete().eq('numero_fn', opAEliminar)
+      setFletes(fletes.filter((f: any) => f.numero_fn !== opAEliminar))
+      setOpAEliminar(null)
     }
   }
 
@@ -352,7 +357,7 @@ export default function Dashboard() {
                 <td className="p-3 flex gap-2">
                   <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold hover:underline">EDITAR</button>
                   <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold hover:underline">ORDEN DE FLETE</button>
-                  <button onClick={() => eliminarFlete(f.numero_fn)} className="text-red-500 text-xs font-bold hover:underline">ELIMINAR</button>
+                  <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 text-xs font-bold hover:underline">ELIMINAR</button>
                 </td>
               </tr>
             )
@@ -366,6 +371,35 @@ export default function Dashboard() {
           )}
         </tbody>
       </table>
+
+      {/* --- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN --- */}
+      {opAEliminar && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-gray-100 text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-600 text-2xl font-bold">⚠️</span>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">¿Confirmar eliminación?</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              ¿Estás seguro de eliminar la operación <span className="font-bold text-gray-800">{opAEliminar}</span>? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button 
+                onClick={() => setOpAEliminar(null)} 
+                className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-sm font-semibold rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmarEliminarFlete} 
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 transition text-sm font-semibold rounded-lg shadow-sm"
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
