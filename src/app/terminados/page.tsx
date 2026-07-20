@@ -1,16 +1,88 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import * as XLSX from 'xlsx'
 
 export default function Terminados() {
   const [fletes, setFletes] = useState<any[]>([])
   const [orden, setOrden] = useState<'asc' | 'desc'>('desc')
   const [busqueda, setBusqueda] = useState('')
   
+  // Estados para el modal/menú de exportación
+  const [mostrarMenuExportar, setMostrarMenuExportar] = useState(false)
+  const [modoExportar, setModoExportar] = useState<'ninguno' | 'rango'>('ninguno')
+  const [fechaDesde, setFechaDesde] = useState('')
+  const [fechaHasta, setFechaHasta] = useState('')
+  const menuRef = useRef<HTMLDivElement>(null)
+  
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
+
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMostrarMenuExportar(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // --- LÓGICA EXPORTAR A EXCEL ---
+  const ejecutarExportacion = (datosAExportar: any[], nombreArchivo: string) => {
+    if (!datosAExportar || datosAExportar.length === 0) {
+      alert("No hay datos para exportar con los criterios seleccionados.")
+      return
+    }
+
+    const datosLimpios = datosAExportar.map(f => ({
+      "Op.": f.numero_fn || '',
+      "Cliente": f.cliente || '',
+      "Tipo Operación": f.tipo_operacion || '',
+      "Fecha y Hora": f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga ? new Date(f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga).toLocaleString('es-AR') : '',
+      "Chofer": f.chofer || '',
+      "Camión": f.patente_camion || '',
+      "Semi": f.patente_semi || '',
+      "Contenedor": f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : '',
+      "Estado": f.estado || 'TERMINADO',
+      "Comentarios": f.notas_adicionales || ''
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(datosLimpios)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Terminados")
+    XLSX.writeFile(workbook, `${nombreArchivo}.xlsx`)
+    setMostrarMenuExportar(false)
+    setModoExportar('ninguno')
+  }
+
+  const exportarVisibles = () => {
+    ejecutarExportacion(fletesFiltrados, "Historial_Terminados_Visibles")
+  }
+
+  const exportarPorRangoFechas = async () => {
+    if (!fechaDesde || !fechaHasta) {
+      alert("Por favor selecciona ambas fechas.")
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('fletes_nacionales')
+      .select('*')
+      .eq('estado', 'TERMINADO')
+      .gte('fecha_hora', fechaDesde)
+      .lte('fecha_hora', fechaHasta + 'T23:59:59')
+
+    if (error) {
+      alert("Error al obtener los datos para el rango.")
+      return
+    }
+
+    ejecutarExportacion(data || [], `Historial_Terminados_${fechaDesde}_al_${fechaHasta}`)
+  }
 
   // --- LÓGICA GENERAR PDF ---
   const generarPDF = (flete: any) => {
@@ -111,7 +183,6 @@ export default function Terminados() {
     const { data } = await supabase
       .from('fletes_nacionales')
       .select('*')
-      // Filtramos para traer EXCLUSIVAMENTE los terminados
       .eq('estado', 'TERMINADO') 
       .order('fecha_hora', { ascending: orden === 'asc' })
     if (data) setFletes(data)
@@ -141,16 +212,68 @@ export default function Terminados() {
         </div>
         <div className="flex gap-4 items-center">
           <input type="text" placeholder="Buscar..." className="border p-2 rounded w-64 text-sm" onChange={(e) => setBusqueda(e.target.value)} />
+          
           <button onClick={() => setOrden(orden === 'asc' ? 'desc' : 'asc')} className="bg-sky-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-sky-700 transition">
             Ordenar: {orden === 'asc' ? 'Antiguos' : 'Recientes'}
           </button>
+
+          {/* Botón y Menú Desplegable de Exportación */}
+          <div className="relative" ref={menuRef}>
+            <button 
+              onClick={() => {
+                setMostrarMenuExportar(!mostrarMenuExportar)
+                setModoExportar('ninguno')
+              }} 
+              className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-1"
+            >
+              📊 Exportar ▾
+            </button>
+
+            {mostrarMenuExportar && (
+              <div className="absolute right-0 mt-2 w-72 bg-white border rounded-lg shadow-xl z-20 p-3 text-sm">
+                <p className="font-bold text-gray-700 mb-2 border-b pb-1">Exportar a Excel</p>
+                
+                {modoExportar === 'ninguno' && (
+                  <div className="flex flex-col gap-2">
+                    <button 
+                      onClick={exportarVisibles}
+                      className="text-left w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-gray-700 font-medium transition"
+                    >
+                      📥 Exportar registros visibles ({fletesFiltrados.length})
+                    </button>
+                    <button 
+                      onClick={() => setModoExportar('rango')}
+                      className="text-left w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-gray-700 font-medium transition"
+                    >
+                      📅 Exportar por rango de fechas
+                    </button>
+                  </div>
+                )}
+
+                {modoExportar === 'rango' && (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <label className="text-xs text-gray-500">Desde:</label>
+                    <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="border p-1.5 rounded text-xs" />
+                    
+                    <label className="text-xs text-gray-500">Hasta:</label>
+                    <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="border p-1.5 rounded text-xs" />
+                    
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={exportarPorRangoFechas} className="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-emerald-700 w-full">Descargar</button>
+                      <button onClick={() => setModoExportar('ninguno')} className="bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-400">Volver</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       
       <table className="w-full bg-white border rounded-lg shadow-sm">
         <thead>
           <tr className="bg-gray-100 text-left text-sm text-gray-600">
-            <th className="p-3">FN</th>
+            <th className="p-3">Op.</th>
             <th className="p-3">Cliente</th>
             <th className="p-3">Tipo</th>
             <th className="p-3">Fecha y Hora</th>
@@ -190,7 +313,6 @@ export default function Terminados() {
                       const nuevoEstado = e.target.value; 
                       await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
                       
-                      // Si cambia a un estado distinto de "TERMINADO", desaparece de este historial
                       if (nuevoEstado !== 'TERMINADO') {
                         setFletes(fletes.filter((item: any) => item.numero_fn !== f.numero_fn));
                       } else {
