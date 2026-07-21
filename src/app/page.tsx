@@ -41,6 +41,17 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const formatearFechaCortas = (fechaStr: string) => {
+    if (!fechaStr) return '';
+    const soloFecha = fechaStr.split('T')[0];
+    const partes = soloFecha.split('-');
+    if (partes.length === 3) {
+      const [anio, mes, dia] = partes;
+      return `${dia}/${mes}`;
+    }
+    return fechaStr;
+  }
+
   const ejecutarExportacion = (datosAExportar: any[], nombreArchivo: string) => {
     if (!datosAExportar || datosAExportar.length === 0) {
       alert("No hay datos para exportar con los criterios seleccionados.")
@@ -166,7 +177,7 @@ export default function Dashboard() {
         `Paradas: ${flete.paradas || 'Ninguna'}`,
         `Destino: ${flete.destino || ' '}`,
         `Devolución: ${flete.lugar_devolucion || ' '}`,
-        `Libre hasta: ${flete.libre_hasta ? new Date(flete.libre_hasta).toLocaleString('es-AR') : ' '}`
+        `Libre hasta: ${flete.libre_hasta || ' '}`
       ]
     } else if (flete.tipo_operacion === 'exportacion') {
       datosEspecificos = [
@@ -335,6 +346,10 @@ export default function Dashboard() {
             const esTram = valorTram === 'SI';
             const tipoMostrar = esTram ? 'TRÁNSITO' : (f.tipo_operacion || '-');
 
+            const devolucionVacia = !f.lugar_devolucion || f.lugar_devolucion.trim() === '';
+            const libreHastaVacio = !f.libre_hasta || f.libre_hasta.trim() === '';
+            const faltanCamposDevolucion = devolucionVacia || libreHastaVacio;
+
             return (
               <tr key={f.numero_fn} className="border-t hover:bg-gray-50 transition">
                 <td className="p-3 font-medium text-gray-900">{f.numero_fn}</td>
@@ -344,7 +359,18 @@ export default function Dashboard() {
                 <td className="p-3 text-sm text-gray-700">{f.chofer}</td>
                 <td className="p-3 text-sm text-gray-700">{f.patente_camion}</td>
                 <td className="p-3 text-sm text-gray-700">{f.patente_semi}</td>
-                <td className="p-3 text-sm text-gray-700">{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</td>
+                <td className="p-3 text-sm text-gray-700">
+                  <div>{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</div>
+                  {faltanCamposDevolucion ? (
+                    <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-medium">
+                      <span>⚠️ Falta devolución / Libre hasta</span>
+                    </div>
+                  ) : (
+                    <div className="mt-0.5 text-[11px] text-gray-500 leading-tight">
+                      Devolución: {f.lugar_devolucion} | Libre: {formatearFechaCortas(f.libre_hasta)}
+                    </div>
+                  )}
+                </td>
                 <td className="p-3">
                   <details className="cursor-pointer group">
                     <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{(f.notas_adicionales || f.notes_adicionales)?.length > 20 ? (f.notas_adicionales || f.notes_adicionales).substring(0, 20) + "..." : (f.notas_adicionales || f.notes_adicionales) || '-'}</summary>
