@@ -19,28 +19,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" href="/icon-192x192.png" />
       </head>
-      <body className="flex min-h-screen bg-gray-50 overflow-x-auto">
+      <body className="flex min-h-screen bg-gray-50 overflow-x-auto relative">
         
-        {/* Overlay para móviles */}
+        {/* Overlay oscuro de fondo cuando la barra está abierta */}
         {isSidebarOpen && (
           <div 
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            className="fixed inset-0 bg-black/50 z-40"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* Barra Lateral con ancho fijo real y flex-shrink-0 para que nunca se deforme */}
+        {/* Barra Lateral que se abre y se cierra con el botón, manteniendo sus opciones fijas en pantalla una vez abierta */}
         <aside className={`
-          fixed md:static inset-y-0 left-0 z-50 
-          ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0 md:w-0'} 
-          transition-all duration-300 ease-in-out bg-slate-900 text-white shadow-2xl flex-shrink-0 overflow-hidden
+          fixed inset-y-0 left-0 z-50 
+          ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'} 
+          transition-transform duration-300 ease-in-out bg-slate-900 text-white shadow-2xl flex-shrink-0 flex flex-col h-screen
         `}>
           <div className="w-64 h-full flex flex-col"> 
             <div className="p-6 font-bold text-xl border-b border-slate-700 flex justify-between items-center whitespace-nowrap">
               GM CARGO SRL
-              <button className="md:hidden p-2" onClick={() => setSidebarOpen(false)}>✕</button>
+              <button className="p-2 text-slate-400 hover:text-white" onClick={() => setSidebarOpen(false)}>✕</button>
             </div>
-            <nav className="p-4 space-y-2 flex-1 whitespace-nowrap">
+            <nav className="p-4 space-y-2 flex-1 whitespace-nowrap overflow-y-auto">
               <Link href="/" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Operaciones</Link>
               <Link href="/fletes" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Nueva Operación</Link>
               <Link href="/terminados" className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Terminados</Link>

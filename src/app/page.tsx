@@ -315,7 +315,6 @@ export default function Dashboard() {
             const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
             const estadoActual = f.estado || 'EN PREPARACIÓN';
             
-            // Verificación infalible: lee tanto 'tram' como 'trm' sin importar mayúsculas/minúsculas
             const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
             const esTram = valorTram === 'SI';
             const tipoMostrar = esTram ? 'TRÁNSITO' : (f.tipo_operacion || '-');
@@ -358,7 +357,7 @@ export default function Dashboard() {
                 </td>
                 <td className="p-3 flex gap-2">
                   <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold hover:underline">EDITAR</button>
-                  <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold hover:underline">ORDEN DE FLETE</button>
+                  <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold hover:underline">PDF</button>
                   <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 text-xs font-bold hover:underline">ELIMINAR</button>
                 </td>
               </tr>
