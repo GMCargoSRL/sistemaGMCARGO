@@ -22,6 +22,16 @@ export default function Dashboard() {
   )
 
   useEffect(() => {
+    const cached = localStorage.getItem('fletes_cache')
+    if (cached) {
+      try { 
+        const parsed = JSON.parse(cached)
+        if (parsed.length > 0) setFletes(parsed)
+      } catch (e) {}
+    }
+  }, [])
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setMostrarMenuExportar(false)
@@ -204,12 +214,16 @@ export default function Dashboard() {
   };
 
   async function getFletes() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fletes_nacionales')
       .select('*')
       .neq('estado', 'TERMINADO') 
       .order('fecha_hora', { ascending: orden === 'asc' })
-    if (data) setFletes(data)
+      
+    if (!error && data) {
+      setFletes(data)
+      localStorage.setItem('fletes_cache', JSON.stringify(data))
+    }
   }
 
   useEffect(() => { getFletes() }, [orden])
@@ -217,7 +231,9 @@ export default function Dashboard() {
   async function confirmarEliminarFlete() {
     if (opAEliminar) {
       await supabase.from('fletes_nacionales').delete().eq('numero_fn', opAEliminar)
-      setFletes(fletes.filter((f: any) => f.numero_fn !== opAEliminar))
+      const nuevosFletes = fletes.filter((f: any) => f.numero_fn !== opAEliminar)
+      setFletes(nuevosFletes)
+      localStorage.setItem('fletes_cache', JSON.stringify(nuevosFletes))
       setOpAEliminar(null)
     }
   }
@@ -343,11 +359,14 @@ export default function Dashboard() {
                       const nuevoEstado = e.target.value; 
                       await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
                       
+                      let nuevosFletes;
                       if (nuevoEstado === 'TERMINADO') {
-                        setFletes(fletes.filter((item: any) => item.numero_fn !== f.numero_fn));
+                        nuevosFletes = fletes.filter((item: any) => item.numero_fn !== f.numero_fn);
                       } else {
-                        setFletes(fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item)); 
+                        nuevosFletes = fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item); 
                       }
+                      setFletes(nuevosFletes);
+                      localStorage.setItem('fletes_cache', JSON.stringify(nuevosFletes));
                     }}
                   >
                     <option value="EN PREPARACIÓN">EN PREPARACIÓN</option>

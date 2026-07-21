@@ -23,6 +23,17 @@ export default function Terminados() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
+  // Cargar caché local al montar el componente (para funcionamiento offline)
+  useEffect(() => {
+    const cached = localStorage.getItem('fletes_terminados_cache')
+    if (cached) {
+      try { 
+        const parsed = JSON.parse(cached)
+        if (parsed.length > 0) setFletes(parsed)
+      } catch (e) {}
+    }
+  }, [])
+
   // Cerrar menú al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -188,16 +199,22 @@ export default function Terminados() {
       .select('*')
       .eq('estado', 'TERMINADO') 
       .order('fecha_hora', { ascending: orden === 'asc' })
-    if (data) setFletes(data)
+      
+    if (data) {
+      setFletes(data)
+      localStorage.setItem('fletes_terminados_cache', JSON.stringify(data))
+    }
   }
 
   useEffect(() => { getFletes() }, [orden])
 
-  // Confirmar y eliminar definitivamente (Reemplaza al antiguo eliminarFlete con confirm nativo)
+  // Confirmar y eliminar definitivamente
   async function confirmarEliminarFlete() {
     if (opAEliminar) {
       await supabase.from('fletes_nacionales').delete().eq('numero_fn', opAEliminar)
-      setFletes(fletes.filter((f: any) => f.numero_fn !== opAEliminar))
+      const nuevosFletes = fletes.filter((f: any) => f.numero_fn !== opAEliminar)
+      setFletes(nuevosFletes)
+      localStorage.setItem('fletes_terminados_cache', JSON.stringify(nuevosFletes))
       setOpAEliminar(null)
     }
   }
