@@ -1,21 +1,12 @@
-{
-  "name": "Gestión de Fletes GM Cargo",
-  "short_name": "GM Cargo",
-  "description": "Sistema de gestión de fletes y operaciones",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0284c7",
-  "icons": [
-    {
-      "src": "/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
+import withPWA from 'next-pwa';
+
+const nextConfig = withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development', // Solo actúa al compilar para producción
+})({
+  // Tus configuraciones previas si las tienes
+});
+
+export default nextConfig;
