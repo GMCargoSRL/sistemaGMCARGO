@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 
 export default function Dashboard() {
   const [fletes, setFletes] = useState<any[]>([])
-  const [orden, setOrden] = useState<'asc' | 'desc'>('desc')
+  const [criterioOrden, setCriterioOrden] = useState<'fecha_asc' | 'fecha_desc' | 'operacion_asc' | 'operacion_desc'>('fecha_asc')
   const [busqueda, setBusqueda] = useState('')
   
   const [mostrarMenuExportar, setMostrarMenuExportar] = useState(false)
@@ -84,7 +84,7 @@ export default function Dashboard() {
   }
 
   const exportarVisibles = () => {
-    ejecutarExportacion(fletesFiltrados, "Operaciones_En_Curso_Visibles")
+    ejecutarExportacion(fletesOrdenadosFinal, "Operaciones_En_Curso_Visibles")
   }
 
   const exportarPorRangoFechas = async () => {
@@ -225,11 +225,14 @@ export default function Dashboard() {
   };
 
   async function getFletes() {
+    const sortBy = criterioOrden.startsWith('fecha') ? 'fecha_hora' : 'numero_fn';
+    const sortAsc = criterioOrden === 'fecha_asc' || criterioOrden === 'operacion_asc';
+
     const { data, error } = await supabase
       .from('fletes_nacionales')
       .select('*')
       .neq('estado', 'TERMINADO') 
-      .order('fecha_hora', { ascending: orden === 'asc' })
+      .order(sortBy, { ascending: sortAsc })
       
     if (!error && data) {
       setFletes(data)
@@ -237,7 +240,7 @@ export default function Dashboard() {
     }
   }
 
-  useEffect(() => { getFletes() }, [orden])
+  useEffect(() => { getFletes() }, [criterioOrden])
 
   async function confirmarEliminarFlete() {
     if (opAEliminar) {
@@ -255,6 +258,17 @@ export default function Dashboard() {
     )
   );
 
+  const fletesOrdenadosFinal = [...fletesFiltrados].sort((a, b) => {
+    if (criterioOrden === 'operacion_asc' || criterioOrden === 'operacion_desc') {
+      // Reemplazamos/eliminamos espacios intermedios o laterales en el número de operación para un orden limpio (ej: "VN-0012 D" -> "VN-0012D")
+      const opA = String(a.numero_fn || '').replace(/\s+/g, '').toLowerCase();
+      const opB = String(b.numero_fn || '').replace(/\s+/g, '').toLowerCase();
+      const comparacion = opA.localeCompare(opB, undefined, { numeric: true, sensitivity: 'base' });
+      return criterioOrden === 'operacion_asc' ? comparacion : -comparacion;
+    }
+    return 0; 
+  });
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-6">
@@ -265,9 +279,16 @@ export default function Dashboard() {
         <div className="flex gap-4 items-center">
           <input type="text" placeholder="Buscar..." className="border p-2 rounded w-64 text-sm" onChange={(e) => setBusqueda(e.target.value)} />
           
-          <button onClick={() => setOrden(orden === 'asc' ? 'desc' : 'asc')} className="bg-sky-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-sky-700 transition">
-            Ordenar: {orden === 'asc' ? 'Antiguos' : 'Recientes'}
-          </button>
+          <select 
+            value={criterioOrden} 
+            onChange={(e) => setCriterioOrden(e.target.value as any)}
+            className="bg-sky-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-sky-700 transition cursor-pointer outline-none"
+          >
+            <option value="fecha_asc" className="bg-white text-gray-800">Más Próximos (Cronológico)</option>
+            <option value="fecha_desc" className="bg-white text-gray-800">Más Lejanos (Inverso)</option>
+            <option value="operacion_asc" className="bg-white text-gray-800">Operación: A - Z</option>
+            <option value="operacion_desc" className="bg-white text-gray-800">Operación: Z - A</option>
+          </select>
 
           <div className="relative" ref={menuRef}>
             <button 
@@ -290,7 +311,7 @@ export default function Dashboard() {
                       onClick={exportarVisibles}
                       className="text-left w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-gray-700 font-medium transition"
                     >
-                      📥 Exportar operaciones visibles ({fletesFiltrados.length})
+                      📥 Exportar operaciones visibles ({fletesOrdenadosFinal.length})
                     </button>
                     <button 
                       onClick={() => setModoExportar('rango')}
@@ -338,13 +359,16 @@ export default function Dashboard() {
           </tr>
         </thead>
         <tbody>
-          {fletesFiltrados.map((f: any) => {
+          {fletesOrdenadosFinal.map((f: any) => {
             const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
             const estadoActual = f.estado || 'EN PREPARACIÓN';
             
             const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
             const esTram = valorTram === 'SI';
             const tipoMostrar = esTram ? 'TRÁNSITO' : (f.tipo_operacion || '-');
+
+            const tipoOpLower = String(f.tipo_operacion || '').trim().toLowerCase();
+            const llevaInfoDevolucion = !esTram && (tipoOpLower === 'exportacion' || tipoOpLower === 'carga_suelta');
 
             const devolucionVacia = !f.lugar_devolucion || f.lugar_devolucion.trim() === '';
             const libreHastaVacio = !f.libre_hasta || f.libre_hasta.trim() === '';
@@ -361,14 +385,18 @@ export default function Dashboard() {
                 <td className="p-3 text-sm text-gray-700">{f.patente_semi}</td>
                 <td className="p-3 text-sm text-gray-700">
                   <div>{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</div>
-                  {faltanCamposDevolucion ? (
-                    <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-medium">
-                      <span>⚠️ Falta devolución / Libre hasta</span>
-                    </div>
-                  ) : (
-                    <div className="mt-0.5 text-[11px] text-gray-500 leading-tight">
-                      Devolución: {f.lugar_devolucion} | Libre: {formatearFechaCortas(f.libre_hasta)}
-                    </div>
+                  {!llevaInfoDevolucion && (
+                    <>
+                      {faltanCamposDevolucion ? (
+                        <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-medium">
+                          <span>⚠️ Falta devolución / Libre hasta</span>
+                        </div>
+                      ) : (
+                        <div className="mt-0.5 text-[11px] text-gray-500 leading-tight">
+                          Devolución: {f.lugar_devolucion} | Libre: {formatearFechaCortas(f.libre_hasta)}
+                        </div>
+                      )}
+                    </>
                   )}
                 </td>
                 <td className="p-3">
@@ -408,7 +436,7 @@ export default function Dashboard() {
               </tr>
             )
           })}
-          {fletesFiltrados.length === 0 && (
+          {fletesOrdenadosFinal.length === 0 && (
             <tr>
               <td colSpan={11} className="p-8 text-center text-gray-400 text-sm">
                 No hay operaciones activas en este momento.
