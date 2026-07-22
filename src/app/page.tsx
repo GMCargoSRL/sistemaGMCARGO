@@ -252,15 +252,29 @@ export default function Dashboard() {
     }
   }
 
-  const fletesFiltrados = fletes.filter((f) => 
+  const queryBusqueda = busqueda.trim().toLowerCase();
+  
+  let fletesFiltrados = fletes.filter((f) => 
     Object.values(f).some((valor) => 
-      String(valor).toLowerCase().includes(busqueda.toLowerCase())
+      String(valor).toLowerCase().includes(queryBusqueda)
     )
   );
 
+  if (fletesFiltrados.length === 0 && queryBusqueda.length > 1) {
+    const palabrasBusqueda = queryBusqueda.split(/\s+/);
+    fletesFiltrados = fletes.filter((f) => {
+      const textoCompletoFlete = Object.values(f).join(' ').toLowerCase();
+      return palabrasBusqueda.some(palabra => {
+        if (palabra.length < 3) return textoCompletoFlete.includes(palabra);
+        return textoCompletoFlete.split(/[\s-_]+/).some(token => 
+          token.includes(palabra) || palabra.includes(token) || (token.length > 3 && palabra.length > 3 && token.substring(0, 3) === palabra.substring(0, 3))
+        );
+      });
+    });
+  }
+
   const fletesOrdenadosFinal = [...fletesFiltrados].sort((a, b) => {
     if (criterioOrden === 'operacion_asc' || criterioOrden === 'operacion_desc') {
-      // Reemplazamos/eliminamos espacios intermedios o laterales en el número de operación para un orden limpio (ej: "VN-0012 D" -> "VN-0012D")
       const opA = String(a.numero_fn || '').replace(/\s+/g, '').toLowerCase();
       const opB = String(b.numero_fn || '').replace(/\s+/g, '').toLowerCase();
       const comparacion = opA.localeCompare(opB, undefined, { numeric: true, sensitivity: 'base' });
@@ -399,10 +413,16 @@ export default function Dashboard() {
                     </>
                   )}
                 </td>
-                <td className="p-3">
+                <td className="p-3 relative">
                   <details className="cursor-pointer group">
-                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{(f.notas_adicionales || f.notes_adicionales)?.length > 20 ? (f.notas_adicionales || f.notes_adicionales).substring(0, 20) + "..." : (f.notas_adicionales || f.notes_adicionales) || '-'}</summary>
-                    <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales || f.notes_adicionales}</div>
+                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">
+                      {(f.notas_adicionales || f.notes_adicionales)?.length > 20 
+                        ? (f.notas_adicionales || f.notes_adicionales).substring(0, 20) + "..." 
+                        : (f.notas_adicionales || f.notes_adicionales) || '-'}
+                    </summary>
+                    <div className="absolute left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-max max-w-md text-sm text-gray-800 break-words whitespace-pre-wrap">
+                      {f.notas_adicionales || f.notes_adicionales}
+                    </div>
                   </details>
                 </td>
                 <td className="p-3">
@@ -439,7 +459,7 @@ export default function Dashboard() {
           {fletesOrdenadosFinal.length === 0 && (
             <tr>
               <td colSpan={11} className="p-8 text-center text-gray-400 text-sm">
-                No hay operaciones activas en este momento.
+                No hay operaciones activas que coincidan con la búsqueda.
               </td>
             </tr>
           )}

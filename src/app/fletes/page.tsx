@@ -169,7 +169,6 @@ export default function FletesPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // --- VALIDACIÓN: Evitar guardar sin número de operación ---
     if (!form.numero_fn || form.numero_fn.trim() === '') {
       toast.error("¡Atención! Debes ingresar o generar un Número de Operación (VN) antes de guardar.")
       return
