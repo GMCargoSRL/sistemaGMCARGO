@@ -224,6 +224,22 @@ export default function Dashboard() {
     }
   };
 
+  const getColorFondoRenglon = (estado: string) => {
+    switch (estado) {
+      case 'EN PREPARACIÓN': 
+      case null: 
+      case undefined: 
+      case '': 
+        return 'bg-blue-50/60 hover:bg-blue-100/80';
+      case 'EN CURSO': 
+        return 'bg-red-50/60 hover:bg-red-100/80';
+      case 'TERMINADO': 
+        return 'bg-green-50/60 hover:bg-green-100/80';
+      default: 
+        return 'bg-blue-50/60 hover:bg-blue-100/80';
+    }
+  };
+
   async function getFletes() {
     const sortBy = criterioOrden.startsWith('fecha') ? 'fecha_hora' : 'numero_fn';
     const sortAsc = criterioOrden === 'fecha_asc' || criterioOrden === 'operacion_asc';
@@ -284,69 +300,87 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
+      {/* Cabecera y controles */}
+      <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Operaciones en Curso</h1>
-          <p className="text-sm text-gray-500">Listado de fletes activos en preparación o tránsito.</p>
+          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Operaciones en Curso</h1>
+          <p className="text-xs md:text-sm text-gray-500 mt-0.5">Listado de fletes activos en preparación o tránsito.</p>
         </div>
-        <div className="flex gap-4 items-center">
-          <input type="text" placeholder="Buscar..." className="border p-2 rounded w-64 text-sm" onChange={(e) => setBusqueda(e.target.value)} />
+        
+        <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+          {/* Buscador con icono */}
+          <div className="relative flex-1 md:w-72">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-sm">
+              🔍
+            </span>
+            <input 
+              type="text" 
+              placeholder="Buscar operación, chofer, cliente..." 
+              className="w-full pl-9 pr-4 py-2 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 placeholder-gray-400" 
+              onChange={(e) => setBusqueda(e.target.value)} 
+            />
+          </div>
           
+          {/* Selector de ordenamiento */}
           <select 
             value={criterioOrden} 
             onChange={(e) => setCriterioOrden(e.target.value as any)}
-            className="bg-sky-600 text-white px-3 py-2 rounded text-sm font-bold hover:bg-sky-700 transition cursor-pointer outline-none"
+            className="bg-white border border-gray-200 text-gray-700 px-3.5 py-2 rounded-xl text-sm font-semibold hover:border-gray-300 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-auto shrink-0"
           >
-            <option value="fecha_asc" className="bg-white text-gray-800">Más Próximos (Cronológico)</option>
-            <option value="fecha_desc" className="bg-white text-gray-800">Más Lejanos (Inverso)</option>
-            <option value="operacion_asc" className="bg-white text-gray-800">Operación: A - Z</option>
-            <option value="operacion_desc" className="bg-white text-gray-800">Operación: Z - A</option>
+            <option value="fecha_asc">📅 Más Próximos</option>
+            <option value="fecha_desc">📅 Más Lejanos</option>
+            <option value="operacion_asc">🔤 Operación: A - Z</option>
+            <option value="operacion_desc">🔤 Operación: Z - A</option>
           </select>
 
+          {/* Menú de exportación */}
           <div className="relative" ref={menuRef}>
             <button 
               onClick={() => {
                 setMostrarMenuExportar(!mostrarMenuExportar)
                 setModoExportar('ninguno')
               }} 
-              className="bg-emerald-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-1"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm hover:shadow flex items-center gap-1.5 cursor-pointer shrink-0"
             >
-              📊 Exportar ▾
+              <span>📊</span> Exportar <span className="text-xs opacity-80">▾</span>
             </button>
 
             {mostrarMenuExportar && (
-              <div className="absolute right-0 mt-2 w-72 bg-white border rounded-lg shadow-xl z-20 p-3 text-sm">
-                <p className="font-bold text-gray-700 mb-2 border-b pb-1">Exportar a Excel</p>
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-2xl z-20 p-4 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                <p className="font-bold text-gray-800 mb-3 pb-2 border-b border-gray-100 flex items-center gap-2">
+                  <span>📥</span> Opciones de Exportación
+                </p>
                 
                 {modoExportar === 'ninguno' && (
                   <div className="flex flex-col gap-2">
                     <button 
                       onClick={exportarVisibles}
-                      className="text-left w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-gray-700 font-medium transition"
+                      className="text-left w-full px-3.5 py-2.5 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl text-gray-700 font-medium transition flex items-center justify-between"
                     >
-                      📥 Exportar operaciones visibles ({fletesOrdenadosFinal.length})
+                      <span>Exportar visibles</span>
+                      <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">{fletesOrdenadosFinal.length}</span>
                     </button>
                     <button 
                       onClick={() => setModoExportar('rango')}
-                      className="text-left w-full px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded text-gray-700 font-medium transition"
+                      className="text-left w-full px-3.5 py-2.5 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl text-gray-700 font-medium transition flex items-center gap-2"
                     >
-                      📅 Exportar por rango de fechas
+                      <span>📅 Por rango de fechas</span>
                     </button>
                   </div>
                 )}
 
                 {modoExportar === 'rango' && (
-                  <div className="flex flex-col gap-2 mt-1">
-                    <label className="text-xs text-gray-500">Desde:</label>
-                    <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="border p-1.5 rounded text-xs" />
+                  <div className="flex flex-col gap-2.5 mt-1">
+                    <label className="text-xs font-semibold text-gray-600">Desde:</label>
+                    <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="border border-gray-200 p-2 rounded-xl text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
                     
-                    <label className="text-xs text-gray-500">Hasta:</label>
-                    <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="border p-1.5 rounded text-xs" />
+                    <label className="text-xs font-semibold text-gray-600">Hasta:</label>
+                    <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="border border-gray-200 p-2 rounded-xl text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
                     
                     <div className="flex gap-2 mt-2">
-                      <button onClick={exportarPorRangoFechas} className="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-emerald-700 w-full">Descargar</button>
-                      <button onClick={() => setModoExportar('ninguno')} className="bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs font-bold hover:bg-gray-400">Volver</button>
+                      <button onClick={exportarPorRangoFechas} className="bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition w-full shadow-sm">Descargar</button>
+                      <button onClick={() => setModoExportar('ninguno')} className="bg-gray-100 text-gray-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-gray-200 transition">Volver</button>
                     </div>
                   </div>
                 )}
@@ -356,119 +390,133 @@ export default function Dashboard() {
         </div>
       </div>
       
-      <table className="w-full bg-white border rounded-lg shadow-sm">
-        <thead>
-          <tr className="bg-gray-100 text-left text-sm text-gray-600">
-            <th className="p-3">Op.</th>
-            <th className="p-3">Cliente</th>
-            <th className="p-3">Tipo</th>
-            <th className="p-3">Fecha y Hora</th>
-            <th className="p-3">Chofer</th>
-            <th className="p-3">Camión</th>
-            <th className="p-3">Semi</th>
-            <th className="p-3">Contenedor</th>
-            <th className="p-3">Comentarios</th>
-            <th className="p-3">Estado</th>
-            <th className="p-3">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {fletesOrdenadosFinal.map((f: any) => {
-            const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
-            const estadoActual = f.estado || 'EN PREPARACIÓN';
-            
-            const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
-            const esTram = valorTram === 'SI';
-            const tipoMostrar = esTram ? 'TRÁNSITO' : (f.tipo_operacion || '-');
+      {/* Tabla con celdas centradas verticalmente (align-middle) */}
+      <div className="min-w-full w-fit bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+        <table className="w-full text-left border-collapse table-auto min-w-[900px]">
+          <thead>
+            <tr className="bg-gray-50 text-xs md:text-sm text-gray-600 border-b border-gray-200">
+              <th className="p-3 md:p-4 font-bold align-middle">Op.</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Cliente</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Tipo</th>
+              <th className="p-3 md:p-4 font-bold align-middle min-w-[100px]">Fecha y Hora</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Chofer</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Camión</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Semi</th>
+              <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Contenedor</th>
+              <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Comentarios</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Estado</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fletesOrdenadosFinal.map((f: any) => {
+              const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
+              const estadoActual = f.estado || 'EN PREPARACIÓN';
+              
+              const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
+              const esTram = valorTram === 'SI';
+              const tipoMostrar = esTram ? 'TRÁNSITO' : (f.tipo_operacion || '-');
 
-            const tipoOpLower = String(f.tipo_operacion || '').trim().toLowerCase();
-            const llevaInfoDevolucion = !esTram && (tipoOpLower === 'exportacion' || tipoOpLower === 'carga_suelta');
+              const tipoOpLower = String(f.tipo_operacion || '').trim().toLowerCase();
+              const llevaInfoDevolucion = !esTram && (tipoOpLower === 'exportacion' || tipoOpLower === 'carga_suelta');
 
-            const devolucionVacia = !f.lugar_devolucion || f.lugar_devolucion.trim() === '';
-            const libreHastaVacio = !f.libre_hasta || f.libre_hasta.trim() === '';
-            const faltanCamposDevolucion = devolucionVacia || libreHastaVacio;
+              const devolucionVacia = !f.lugar_devolucion || f.lugar_devolucion.trim() === '';
+              const libreHastaVacio = !f.libre_hasta || f.libre_hasta.trim() === '';
+              const faltanCamposDevolucion = devolucionVacia || libreHastaVacio;
 
-            return (
-              <tr key={f.numero_fn} className="border-t hover:bg-gray-50 transition">
-                <td className="p-3 font-medium text-gray-900">{f.numero_fn}</td>
-                <td className="p-3 text-sm text-gray-700">{f.cliente || '-'}</td>
-                <td className="p-3 text-xs font-bold uppercase text-gray-500">{tipoMostrar}</td>
-                <td className="p-3 text-sm text-gray-700">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
-                <td className="p-3 text-sm text-gray-700">{f.chofer}</td>
-                <td className="p-3 text-sm text-gray-700">{f.patente_camion}</td>
-                <td className="p-3 text-sm text-gray-700">{f.patente_semi}</td>
-                <td className="p-3 text-sm text-gray-700">
-                  <div>{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</div>
-                  {!llevaInfoDevolucion && (
-                    <>
-                      {faltanCamposDevolucion ? (
-                        <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-medium">
-                          <span>⚠️ Falta devolución / Libre hasta</span>
+              const renglonColor = getColorFondoRenglon(estadoActual);
+              
+              const textoComentarioCompleto = f.notas_adicionales || f.notes_adicionales || '';
+              const textoComentarioCorto = textoComentarioCompleto.length > 25 
+                ? textoComentarioCompleto.substring(0, 25) + '...' 
+                : (textoComentarioCompleto || '-');
+
+              return (
+                <tr key={f.numero_fn} className={`border-t border-gray-100 transition text-xs md:text-sm ${renglonColor}`}>
+                  <td className="p-3 md:p-4 font-semibold text-gray-900 break-words whitespace-normal align-middle">{f.numero_fn}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.cliente || '-'}</td>
+                  <td className="p-3 md:p-4 font-bold uppercase text-gray-500 text-[10px] md:text-xs break-words whitespace-normal align-middle">{tipoMostrar}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.chofer}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.patente_camion}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.patente_semi}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                    <div>{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</div>
+                    {!llevaInfoDevolucion && (
+                      <>
+                        {faltanCamposDevolucion ? (
+                          <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-medium leading-tight">
+                            <span>⚠️ Falta dev. / libre</span>
+                          </div>
+                        ) : (
+                          <div className="mt-0.5 text-[10px] text-gray-500 leading-tight break-words whitespace-normal">
+                            Dev: {f.lugar_devolucion} | Libre: {formatearFechaCortas(f.libre_hasta)}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </td>
+                  <td className="p-3 md:p-4 relative break-words whitespace-normal align-middle">
+                    {textoComentarioCompleto ? (
+                      <details className="cursor-pointer group">
+                        <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
+                          {textoComentarioCorto}
+                        </summary>
+                        <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
+                          {textoComentarioCompleto}
                         </div>
-                      ) : (
-                        <div className="mt-0.5 text-[11px] text-gray-500 leading-tight">
-                          Devolución: {f.lugar_devolucion} | Libre: {formatearFechaCortas(f.libre_hasta)}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </td>
-                <td className="p-3 relative">
-                  <details className="cursor-pointer group">
-                    <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">
-                      {(f.notas_adicionales || f.notes_adicionales)?.length > 20 
-                        ? (f.notas_adicionales || f.notes_adicionales).substring(0, 20) + "..." 
-                        : (f.notas_adicionales || f.notes_adicionales) || '-'}
-                    </summary>
-                    <div className="absolute left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-max max-w-md text-sm text-gray-800 break-words whitespace-pre-wrap">
-                      {f.notas_adicionales || f.notes_adicionales}
+                      </details>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                  <td className="p-3 md:p-4 align-middle">
+                    <select 
+                      className={`px-2.5 py-1.5 rounded-full text-[10px] md:text-xs font-bold border cursor-pointer w-full shadow-sm transition ${getEstadoStyle(f.estado)}`} 
+                      value={estadoActual} 
+                      onChange={async (e) => { 
+                        const nuevoEstado = e.target.value; 
+                        await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
+                        
+                        let nuevosFletes;
+                        if (nuevoEstado === 'TERMINADO') {
+                          nuevosFletes = fletes.filter((item: any) => item.numero_fn !== f.numero_fn);
+                        } else {
+                          nuevosFletes = fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item); 
+                        }
+                        setFletes(nuevosFletes);
+                        localStorage.setItem('fletes_cache', JSON.stringify(nuevosFletes));
+                      }}
+                    >
+                      <option value="EN PREPARACIÓN">EN PREPARACIÓN</option>
+                      <option value="EN CURSO">EN CURSO</option>
+                      <option value="TERMINADO">TERMINADO</option>
+                    </select>
+                  </td>
+                  <td className="p-3 md:p-4 text-left align-middle">
+                    <div className="flex flex-col items-start gap-1">
+                      <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-[11px] font-bold hover:underline">EDITAR</button>
+                      <button onClick={() => generarPDF(f)} className="text-green-600 text-[11px] font-bold hover:underline">PDF</button>
+                      <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 text-[11px] font-bold hover:underline">ELIMINAR</button>
                     </div>
-                  </details>
-                </td>
-                <td className="p-3">
-                  <select 
-                    className={`px-3 py-1 rounded-full text-xs font-bold border cursor-pointer ${getEstadoStyle(f.estado)}`} 
-                    value={estadoActual} 
-                    onChange={async (e) => { 
-                      const nuevoEstado = e.target.value; 
-                      await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
-                      
-                      let nuevosFletes;
-                      if (nuevoEstado === 'TERMINADO') {
-                        nuevosFletes = fletes.filter((item: any) => item.numero_fn !== f.numero_fn);
-                      } else {
-                        nuevosFletes = fletes.map((item: any) => item.numero_fn === f.numero_fn ? { ...item, estado: nuevoEstado } : item); 
-                      }
-                      setFletes(nuevosFletes);
-                      localStorage.setItem('fletes_cache', JSON.stringify(nuevosFletes));
-                    }}
-                  >
-                    <option value="EN PREPARACIÓN">EN PREPARACIÓN</option>
-                    <option value="EN CURSO">EN CURSO</option>
-                    <option value="TERMINADO">TERMINADO</option>
-                  </select>
-                </td>
-                <td className="p-3 flex gap-2">
-                  <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold hover:underline">EDITAR</button>
-                  <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold hover:underline">PDF</button>
-                  <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 text-xs font-bold hover:underline">ELIMINAR</button>
+                  </td>
+                </tr>
+              )
+            })}
+            {fletesOrdenadosFinal.length === 0 && (
+              <tr>
+                <td colSpan={11} className="p-12 text-center text-gray-400 text-sm">
+                  No hay operaciones activas que coincidan con la búsqueda.
                 </td>
               </tr>
-            )
-          })}
-          {fletesOrdenadosFinal.length === 0 && (
-            <tr>
-              <td colSpan={11} className="p-8 text-center text-gray-400 text-sm">
-                No hay operaciones activas que coincidan con la búsqueda.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {opAEliminar && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4 border border-gray-100 text-center">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-100 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-red-600 text-2xl font-bold">⚠️</span>
             </div>
@@ -479,13 +527,13 @@ export default function Dashboard() {
             <div className="flex gap-3 justify-center">
               <button 
                 onClick={() => setOpAEliminar(null)} 
-                className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-sm font-semibold rounded-lg"
+                className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-sm font-semibold rounded-xl"
               >
                 Cancelar
               </button>
               <button 
                 onClick={confirmarEliminarFlete} 
-                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 transition text-sm font-semibold rounded-lg shadow-sm"
+                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 transition text-sm font-semibold rounded-xl shadow-sm"
               >
                 Sí, eliminar
               </button>

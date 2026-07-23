@@ -34,15 +34,19 @@ export default function FletesPage() {
 
   const [operacionGuardada, setOperacionGuardada] = useState<any | null>(null)
 
-  useEffect(() => {
-    const hayDatosCargados = Object.entries(form).some(([key, value]) => {
-      if (key === 'tipo_operacion') return value !== 'importacion'
-      if (key === 'tram') return value !== 'NO'
-      return value !== ''
-    })
+  // Estados para el control del cartel de advertencia al salir sin guardar
+  const [mostrarAvisoSalida, setMostrarAvisoSalida] = useState(false)
+  const [rutaPendiente, setRutaPendiente] = useState<string | null>(null)
 
+  const hayDatosCargados = Object.entries(form).some(([key, value]) => {
+    if (key === 'tipo_operacion') return value !== 'importacion'
+    if (key === 'tram') return value !== 'NO'
+    return value !== ''
+  })
+
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hayDatosCargados) {
+      if (hayDatosCargados && !operacionGuardada) {
         e.preventDefault()
         e.returnValue = ''
       }
@@ -50,7 +54,30 @@ export default function FletesPage() {
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [form])
+  }, [hayDatosCargados, operacionGuardada])
+
+  // Interceptar enlaces internos para mostrar el modal de advertencia si hay cambios sin guardar
+  useEffect(() => {
+    const handleAnchorClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest('a')
+      if (target && hayDatosCargados && !operacionGuardada) {
+        const href = target.getAttribute('href')
+        if (href && (href.startsWith('/') || href.startsWith('.'))) {
+          e.preventDefault()
+          setRutaPendiente(href)
+          setMostrarAvisoSalida(true)
+        }
+      }
+    }
+
+    document.addEventListener('click', handleAnchorClick, true)
+    return () => document.removeEventListener('click', handleAnchorClick, true)
+  }, [hayDatosCargados, operacionGuardada])
+
+  const confirmarSalidaSinGuardar = () => {
+    setMostrarAvisoSalida(false)
+    router.push(rutaPendiente || '/')
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -382,6 +409,39 @@ export default function FletesPage() {
         <button type="button" onClick={handleCancelar} className="w-full bg-red-400 text-white p-3 font-bold rounded-lg hover:bg-red-500 transition">Cancelar</button>
       </div>
     </form>
+
+      {/* --- CARTEL DE ADVERTENCIA: CAMBIOS SIN GUARDAR --- */}
+      {mostrarAvisoSalida && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border border-gray-100 text-center">
+            
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-amber-600 text-3xl font-bold">⚠️</span>
+            </div>
+
+            <h3 className="text-xl font-bold text-gray-900 mb-2">¡Atención! Tienes cambios sin guardar</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Si sales ahora sin guardar, perderás todos los datos ingresados en esta nueva operación.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => setMostrarAvisoSalida(false)}
+                className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl text-sm transition shadow-sm"
+              >
+                Continuar cargando
+              </button>
+              
+              <button 
+                onClick={confirmarSalidaSinGuardar}
+                className="w-full py-3 px-4 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-xl text-sm transition"
+              >
+                Salir sin guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- CARTEL / MODAL DE ÉXITO Y PRÓXIMOS PASOS --- */}
       {operacionGuardada && (

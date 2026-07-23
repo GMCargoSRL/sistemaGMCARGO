@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import './globals.css'
 import { metadata } from './layout-metadata'
@@ -7,6 +7,21 @@ import { Toaster } from 'sonner' // <-- Añadido para las notificaciones flotant
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
+  const [fechaHoraActual, setFechaHoraActual] = useState<string>('')
+
+  // Efecto para actualizar el reloj cada segundo en el encabezado global
+  useEffect(() => {
+    const actualizarReloj = () => {
+      const ahora = new Date()
+      setFechaHoraActual(ahora.toLocaleString('es-AR', {
+        dateStyle: 'full',
+        timeStyle: 'medium'
+      }))
+    }
+    actualizarReloj()
+    const timer = setInterval(actualizarReloj, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   return (
     <html lang="es">
@@ -15,11 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="description" content={metadata.description} />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content={metadata.themeColor || '#0284c7'} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" href="/icon-192x192.png" />
       </head>
-      <body className="flex min-h-screen bg-gray-50 overflow-x-auto relative">
+      <body className="min-h-screen bg-gray-50 relative overflow-x-auto m-0 p-0">
         
         {/* Overlay oscuro de fondo cuando la barra está abierta */}
         {isSidebarOpen && (
@@ -29,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         )}
 
-        {/* Barra Lateral que se abre y se cierra con el botón, manteniendo sus opciones fijas en pantalla una vez abierta */}
+        {/* Barra Lateral que se abre y se cierra con el botón */}
         <aside className={`
           fixed inset-y-0 left-0 z-50 
           ${isSidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'} 
@@ -48,24 +63,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </aside>
 
-        {/* Contenido Principal */}
-        <main className="flex-1 flex flex-col min-w-max">
-          <header className="bg-white shadow-sm p-4 flex items-center sticky top-0 z-30 w-full">
-            <button 
-              className="p-2 text-slate-600 hover:bg-gray-100 rounded-lg transition-colors"
-              onClick={() => setSidebarOpen(!isSidebarOpen)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <span className="ml-4 font-semibold text-slate-700">Sistema de Gestión</span>
+        {/* Contenedor Principal con límite fluido y scroll inteligente */}
+        <div className="flex flex-col min-h-screen w-full min-w-[1200px]">
+          <header className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-30 w-full">
+            <div className="flex items-center">
+              <button 
+                className="p-2 text-slate-600 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={() => setSidebarOpen(!isSidebarOpen)}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <span className="ml-4 font-semibold text-slate-700">Sistema de Gestión</span>
+            </div>
+
+            {/* Reloj en tiempo real en la parte superior derecha */}
+            <div className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs capitalize ml-8">
+              {fechaHoraActual}
+            </div>
           </header>
           
-          <div className="p-4 md:p-8">
+          {/* Contenido principal */}
+          <main className="flex-1 w-full px-4 py-4">
             {children}
-          </div>
-        </main>
+          </main>
+        </div>
 
         {/* Componente que renderiza los avisos flotantes */}
         <Toaster richColors position="top-right" />

@@ -193,6 +193,22 @@ export default function Terminados() {
     }
   };
 
+  const getColorFondoRenglon = (estado: string) => {
+    switch (estado) {
+      case 'EN PREPARACIÓN': 
+      case null: 
+      case undefined: 
+      case '': 
+        return 'bg-blue-50/60 hover:bg-blue-100/80';
+      case 'EN CURSO': 
+        return 'bg-red-50/60 hover:bg-red-100/80';
+      case 'TERMINADO': 
+        return 'bg-green-50/60 hover:bg-green-100/80';
+      default: 
+        return 'bg-gray-50/60 hover:bg-gray-100/80';
+    }
+  };
+
   async function getFletes() {
     const { data } = await supabase
       .from('fletes_nacionales')
@@ -292,7 +308,7 @@ export default function Terminados() {
         </div>
       </div>
       
-      <table className="w-full bg-white border rounded-lg shadow-sm">
+      <table className="w-full bg-white border rounded-lg shadow-sm overflow-hidden">
         <thead>
           <tr className="bg-gray-100 text-left text-sm text-gray-600">
             <th className="p-3">Op.</th>
@@ -311,8 +327,9 @@ export default function Terminados() {
         <tbody>
           {fletesFiltrados.map((f: any) => {
             const fechaMostrar = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
+            const estadoActual = f.estado || 'TERMINADO';
             return (
-              <tr key={f.numero_fn} className="border-t hover:bg-gray-50 transition">
+              <tr key={f.numero_fn} className={`border-t transition ${getColorFondoRenglon(estadoActual)}`}>
                 <td className="p-3 font-medium text-gray-900">{f.numero_fn}</td>
                 <td className="p-3 text-sm text-gray-700">{f.cliente || '-'}</td>
                 <td className="p-3 text-xs font-bold uppercase text-gray-500">{f.tipo_operacion || '-'}</td>
@@ -321,7 +338,7 @@ export default function Terminados() {
                 <td className="p-3 text-sm text-gray-700">{f.patente_camion}</td>
                 <td className="p-3 text-sm text-gray-700">{f.patente_semi}</td>
                 <td className="p-3 text-sm text-gray-700">{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</td>
-                <td className="p-3">
+                <td className="p-3 relative">
                   <details className="cursor-pointer group">
                     <summary className="list-none text-sm text-gray-600 hover:text-blue-600 hover:underline">{(f.notas_adicionales || f.notes_adicionales)?.length > 20 ? (f.notas_adicionales || f.notes_adicionales).substring(0, 20) + "..." : (f.notas_adicionales || f.notes_adicionales) || '-'}</summary>
                     <div className="absolute z-10 p-4 mt-2 bg-white border rounded shadow-xl w-64 text-sm text-gray-800">{f.notas_adicionales || f.notes_adicionales}</div>
@@ -334,7 +351,7 @@ export default function Terminados() {
                 </td>
                 <td className="p-3 flex gap-2">
                   <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-xs font-bold hover:underline">EDITAR</button>
-                  <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold hover:underline">ORDEN DE FLETE</button>
+                  <button onClick={() => generarPDF(f)} className="text-green-600 text-xs font-bold hover:underline">PDF</button>
                   <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 text-xs font-bold hover:underline">ELIMINAR</button>
                 </td>
               </tr>
