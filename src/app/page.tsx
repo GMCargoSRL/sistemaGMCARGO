@@ -301,32 +301,32 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
-      {/* Cabecera y controles */}
+      {/* Cabecera y controles adaptados para móviles */}
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Operaciones en Curso</h1>
           <p className="text-xs md:text-sm text-gray-500 mt-0.5">Listado de fletes activos en preparación o tránsito.</p>
         </div>
         
-        <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-          {/* Buscador con icono */}
-          <div className="relative flex-1 md:w-72">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center w-full md:w-auto">
+          {/* Buscador con ancho completo en móvil */}
+          <div className="relative w-full md:w-72">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-sm">
               🔍
             </span>
             <input 
               type="text" 
               placeholder="Buscar operación, chofer, cliente..." 
-              className="w-full pl-9 pr-4 py-2 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 placeholder-gray-400" 
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 placeholder-gray-400" 
               onChange={(e) => setBusqueda(e.target.value)} 
             />
           </div>
           
-          {/* Selector de ordenamiento */}
+          {/* Selector de ordenamiento adaptado */}
           <select 
             value={criterioOrden} 
             onChange={(e) => setCriterioOrden(e.target.value as any)}
-            className="bg-white border border-gray-200 text-gray-700 px-3.5 py-2 rounded-xl text-sm font-semibold hover:border-gray-300 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-auto shrink-0"
+            className="bg-white border border-gray-200 text-gray-700 px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-full sm:w-auto shrink-0"
           >
             <option value="fecha_asc">📅 Más Próximos</option>
             <option value="fecha_desc">📅 Más Lejanos</option>
@@ -334,20 +334,20 @@ export default function Dashboard() {
             <option value="operacion_desc">🔤 Operación: Z - A</option>
           </select>
 
-          {/* Menú de exportación */}
-          <div className="relative" ref={menuRef}>
+          {/* Menú de exportación optimizado para pantallas pequeñas */}
+          <div className="relative w-full sm:w-auto" ref={menuRef}>
             <button 
               onClick={() => {
                 setMostrarMenuExportar(!mostrarMenuExportar)
                 setModoExportar('ninguno')
               }} 
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition shadow-sm hover:shadow flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition shadow-sm hover:shadow flex items-center justify-center gap-1.5 cursor-pointer w-full sm:w-auto shrink-0"
             >
               <span>📊</span> Exportar <span className="text-xs opacity-80">▾</span>
             </button>
 
             {mostrarMenuExportar && (
-              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-2xl z-20 p-4 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-100 rounded-2xl shadow-2xl z-20 p-4 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
                 <p className="font-bold text-gray-800 mb-3 pb-2 border-b border-gray-100 flex items-center gap-2">
                   <span>📥</span> Opciones de Exportación
                 </p>
@@ -390,7 +390,7 @@ export default function Dashboard() {
         </div>
       </div>
       
-      {/* Tabla con celdas centradas verticalmente (align-middle) */}
+      {/* Tabla con celdas centradas verticalmente */}
       <div className="min-w-full w-fit bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse table-auto min-w-[900px]">
           <thead>
