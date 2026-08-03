@@ -61,6 +61,11 @@ export default function Terminados() {
     const datosLimpios = datosAExportar.map(f => {
       const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
       const esTram = valorTram === 'SI';
+      const tipoOpLower = String(f.tipo_operacion || '').trim().toLowerCase();
+      const infoBultoContenedor = tipoOpLower === 'carga_suelta'
+        ? `${f.cantidad_bultos || ''} ${f.peso_bruto ? `(${f.peso_bruto} kg)` : ''}`.trim()
+        : (f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : '');
+
       return {
         "Operación": f.numero_fn || '',
         "Cliente": f.cliente || '',
@@ -69,7 +74,7 @@ export default function Terminados() {
         "Chofer": f.chofer || '',
         "Camión": f.patente_camion || '',
         "Semi": f.patente_semi || '',
-        "Contenedor": f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : '',
+        "Bulto": infoBultoContenedor,
         "Estado": f.estado || 'TERMINADO',
         "Comentarios": f.notas_adicionales || f.notes_adicionales || ''
       }
@@ -265,11 +270,99 @@ export default function Terminados() {
     }
   }
 
-  const queryBusqueda = busqueda.trim().toLowerCase();
+  const levenshteinDistance = (a: string, b: string): number => {
+    const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return matrix[a.length][b.length];
+  };
+
+  const esCoincidenciaAproximada = (texto: string, busquedaStr: string): boolean => {
+    if (!busquedaStr) return true;
+    if (!texto) return false;
+    
+    const textoLower = texto.toLowerCase();
+    const busquedaLower = busquedaStr.toLowerCase();
+
+    if (textoLower.includes(busquedaLower)) return true;
+    if (busquedaLower.length <= 2) return textoLower.includes(busquedaLower);
+
+    const palabrasTexto = textoLower.split(/\s+/);
+    const maxErrores = busquedaLower.length <= 4 ? 1 : busquedaLower.length <= 8 ? 2 : 3;
+
+    for (const palabra of palabrasTexto) {
+      if (Math.abs(palabra.length - busquedaLower.length) > maxErrores) continue;
+      if (levenshteinDistance(palabra, busquedaLower) <= maxErrores) return true;
+      if (palabra.includes(busquedaLower)) return true;
+    }
+
+    return false;
+  };
+
+  const resaltarTexto = (textoOriginal: string, busquedaStr: string) => {
+    if (!textoOriginal) return '';
+    if (!busquedaStr || busquedaStr.trim() === '') return textoOriginal;
+
+    const textoStr = String(textoOriginal);
+    const query = busquedaStr.trim();
+    const queryLower = query.toLowerCase();
+    const textoLower = textoStr.toLowerCase();
+
+    if (textoLower.includes(queryLower)) {
+      const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`(${escapedQuery})`, 'gi');
+      const partes = textoStr.split(regex);
+      return partes.map((parte, i) => {
+        if (parte.toLowerCase() === queryLower) {
+          return <mark key={i} className="bg-yellow-300 text-gray-900 rounded px-0.5 font-semibold">{parte}</mark>;
+        }
+        return parte;
+      });
+    }
+
+    if (queryLower.length <= 2) return textoStr;
+
+    const palabras = textoStr.split(/(\s+)/);
+    const maxErrores = queryLower.length <= 4 ? 1 : queryLower.length <= 8 ? 2 : 3;
+
+    return palabras.map((palabra, idx) => {
+      const palabraTrim = palabra.trim();
+      if (!palabraTrim) return palabra;
+
+      const palabraLower = palabraTrim.toLowerCase();
+      let coincide = false;
+
+      if (palabraLower.includes(queryLower) || queryLower.includes(palabraLower)) {
+        coincide = true;
+      } else if (Math.abs(palabraLower.length - queryLower.length) <= maxErrores) {
+        if (levenshteinDistance(palabraLower, queryLower) <= maxErrores) {
+          coincide = true;
+        }
+      }
+
+      if (coincide) {
+        return <mark key={idx} className="bg-yellow-300 text-gray-900 rounded px-0.5 font-semibold">{palabra}</mark>;
+      }
+      return palabra;
+    });
+  };
+
+  const queryBusqueda = busqueda.trim();
   
   let fletesFiltrados = fletes.filter((f) => 
     Object.values(f).some((valor) => 
-      String(valor).toLowerCase().includes(queryBusqueda)
+      esCoincidenciaAproximada(String(valor || ''), queryBusqueda)
     )
   );
 
@@ -374,7 +467,7 @@ export default function Terminados() {
               <th className="p-3 md:p-4 font-bold align-middle">Chofer</th>
               <th className="p-3 md:p-4 font-bold align-middle">Camión</th>
               <th className="p-3 md:p-4 font-bold align-middle">Semi</th>
-              <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Contenedor</th>
+              <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Bulto</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Comentarios</th>
               <th className="p-3 md:p-4 font-bold align-middle">Estado</th>
               <th className="p-3 md:p-4 font-bold align-middle">Acciones</th>
@@ -405,16 +498,41 @@ export default function Terminados() {
 
               return (
                 <tr key={f.numero_fn} className={`border-t border-gray-100 transition text-xs md:text-sm ${renglonColor}`}>
-                  <td className="p-3 md:p-4 font-semibold text-gray-900 break-words whitespace-normal align-middle">{f.numero_fn}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.cliente || '-'}</td>
-                  <td className="p-3 md:p-4 font-bold uppercase text-gray-500 text-[10px] md:text-xs break-words whitespace-normal align-middle">{tipoMostrar}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.chofer}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.patente_camion}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.patente_semi}</td>
+                  <td className="p-3 md:p-4 font-semibold text-gray-900 break-words whitespace-normal align-middle">
+                    {resaltarTexto(f.numero_fn, queryBusqueda)}
+                  </td>
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
-                    <div>{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</div>
-                    {!llevaInfoDevolucion && (
+                    {resaltarTexto(f.cliente || '-', queryBusqueda)}
+                  </td>
+                  <td className="p-3 md:p-4 font-bold uppercase text-gray-500 text-[10px] md:text-xs break-words whitespace-normal align-middle">
+                    {resaltarTexto(tipoMostrar, queryBusqueda)}
+                  </td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                    {fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
+                  </td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                    {resaltarTexto(f.chofer, queryBusqueda)}
+                  </td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                    {resaltarTexto(f.patente_camion, queryBusqueda)}
+                  </td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                    {resaltarTexto(f.patente_semi, queryBusqueda)}
+                  </td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                    <div>
+                      {tipoOpLower === 'carga_suelta' ? (
+                        <span>
+                          {f.cantidad_bultos ? resaltarTexto(String(f.cantidad_bultos), queryBusqueda) : ''}
+                          {f.peso_bruto ? ` (${resaltarTexto(String(f.peso_bruto), queryBusqueda)} kg)` : ''}
+                        </span>
+                      ) : (
+                        <>
+                          {resaltarTexto(f.contenedor_num || '', queryBusqueda)} {f.contenedor_tipo ? `(${resaltarTexto(f.contenedor_tipo, queryBusqueda)})` : ''}
+                        </>
+                      )}
+                    </div>
+                    {!llevaInfoDevolucion && tipoOpLower !== 'carga_suelta' && (
                       <>
                         {faltanCamposDevolucion ? (
                           <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-medium leading-tight">
@@ -422,7 +540,7 @@ export default function Terminados() {
                           </div>
                         ) : (
                           <div className="mt-0.5 text-[10px] text-gray-500 leading-tight break-words whitespace-normal">
-                            Dev: {f.lugar_devolucion} | Libre: {formatearFechaCortas(f.libre_hasta)}
+                            Dev: {resaltarTexto(f.lugar_devolucion, queryBusqueda)} | Libre: {resaltarTexto(formatearFechaCortas(f.libre_hasta), queryBusqueda)}
                           </div>
                         )}
                       </>
@@ -432,10 +550,10 @@ export default function Terminados() {
                     {textoComentarioCompleto ? (
                       <details className="cursor-pointer group">
                         <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
-                          {textoComentarioCorto}
+                          {resaltarTexto(textoComentarioCorto, queryBusqueda)}
                         </summary>
                         <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
-                          {textoComentarioCompleto}
+                          {resaltarTexto(textoComentarioCompleto, queryBusqueda)}
                         </div>
                       </details>
                     ) : (

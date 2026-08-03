@@ -3,6 +3,93 @@ import { useEffect, useState, useRef } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import * as XLSX from 'xlsx'
 
+// Funciones auxiliares para búsqueda aproximada y resaltado
+function levenshtein(a: string, b: string): number {
+  const an = a.length;
+  const bn = b.length;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix = Array.from({ length: bn + 1 }, () => Array(an + 1).fill(0));
+  for (let i = 0; i <= bn; i++) matrix[i][0] = i;
+  for (let j = 0; j <= an; j++) matrix[0][j] = j;
+  for (let i = 1; i <= bn; i++) {
+    for (let j = 1; j <= an; j++) {
+      const cost = b.charAt(i - 1) === a.charAt(j - 1) ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return matrix[bn][an];
+}
+
+function cumpleBusquedaAproximada(valor: any, query: string): boolean {
+  if (!valor) return false;
+  const strVal = String(valor).toLowerCase();
+  const q = query.toLowerCase().trim();
+  if (!q) return true;
+
+  if (strVal.includes(q)) return true;
+
+  const palabrasQuery = q.split(/\s+/);
+  const tokensVal = strVal.split(/[\s-_]+/);
+
+  return palabrasQuery.some(pq => {
+    if (pq.length === 0) return false;
+    return tokensVal.some(token => {
+      if (token.includes(pq) || pq.includes(token)) return true;
+      const maxDist = pq.length <= 4 ? 1 : 2;
+      if (Math.abs(token.length - pq.length) > maxDist) return false;
+      return levenshtein(token, pq) <= maxDist;
+    });
+  });
+}
+
+function highlightMatch(text: any, query: string): React.ReactNode {
+  if (!text) return '-';
+  const strText = String(text);
+  const q = query.trim().toLowerCase();
+  if (!q) return strText;
+
+  const lowerText = strText.toLowerCase();
+  let index = lowerText.indexOf(q);
+  if (index !== -1) {
+    const before = strText.substring(0, index);
+    const match = strText.substring(index, index + q.length);
+    const after = strText.substring(index + q.length);
+    return (
+      <>
+        {before}
+        <mark className="bg-yellow-200 text-gray-900 rounded px-0.5">{match}</mark>
+        {highlightMatch(after, q)}
+      </>
+    );
+  }
+
+  const palabrasQuery = q.split(/\s+/).filter(p => p.length > 0);
+  if (palabrasQuery.length === 0) return strText;
+
+  const parts = strText.split(/([\s-_]+)/);
+  return parts.map((part, i) => {
+    const lowerPart = part.toLowerCase();
+    const isMatched = palabrasQuery.some(pq => {
+      if (lowerPart.includes(pq) || pq.includes(lowerPart)) return true;
+      if (lowerPart.length >= 2 && pq.length >= 2) {
+        const maxDist = pq.length <= 4 ? 1 : 2;
+        return Math.abs(lowerPart.length - pq.length) <= maxDist && levenshtein(lowerPart, pq) <= maxDist;
+      }
+      return false;
+    });
+
+    if (isMatched && part.trim().length > 0) {
+      return <mark key={i} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>;
+    }
+    return part;
+  });
+}
+
 export default function Dashboard() {
   const [fletes, setFletes] = useState<any[]>([])
   const [criterioOrden, setCriterioOrden] = useState<'fecha_asc' | 'fecha_desc' | 'operacion_asc' | 'operacion_desc'>('fecha_asc')
@@ -69,7 +156,9 @@ export default function Dashboard() {
         "Chofer": f.chofer || '',
         "Camión": f.patente_camion || '',
         "Semi": f.patente_semi || '',
-        "Contenedor": f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : '',
+        "Bulto": f.tipo_operacion === 'carga_suelta' 
+          ? `${f.cantidad_bultos || ''} ${f.peso_bruto ? `(${f.peso_bruto})` : ''}`.trim() 
+          : (f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : ''),
         "Estado": f.estado || 'EN PREPARACIÓN',
         "Comentarios": f.notas_adicionales || f.notes_adicionales || ''
       }
@@ -271,23 +360,20 @@ export default function Dashboard() {
   const queryBusqueda = busqueda.trim().toLowerCase();
   
   let fletesFiltrados = fletes.filter((f) => 
-    Object.values(f).some((valor) => 
-      String(valor).toLowerCase().includes(queryBusqueda)
-    )
+    Object.values(f).some((valor) => cumpleBusquedaAproximada(valor, queryBusqueda))
   );
 
-  if (fletesFiltrados.length === 0 && queryBusqueda.length > 1) {
-    const palabrasBusqueda = queryBusqueda.split(/\s+/);
-    fletesFiltrados = fletes.filter((f) => {
-      const textoCompletoFlete = Object.values(f).join(' ').toLowerCase();
-      return palabrasBusqueda.some(palabra => {
-        if (palabra.length < 3) return textoCompletoFlete.includes(palabra);
-        return textoCompletoFlete.split(/[\s-_]+/).some(token => 
-          token.includes(palabra) || palabra.includes(token) || (token.length > 3 && palabra.length > 3 && token.substring(0, 3) === palabra.substring(0, 3))
-        );
-      });
-    });
-  }
+  const getEstadoPeso = (estado: string) => {
+    const est = (estado || 'EN PREPARACIÓN').toUpperCase();
+    return est === 'EN CURSO' ? 0 : 1;
+  };
+
+  const getFechaTimestamp = (f: any) => {
+    const fechaStr = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
+    if (!fechaStr) return 0;
+    const time = new Date(fechaStr).getTime();
+    return isNaN(time) ? 0 : time;
+  };
 
   const fletesOrdenadosFinal = [...fletesFiltrados].sort((a, b) => {
     if (criterioOrden === 'operacion_asc' || criterioOrden === 'operacion_desc') {
@@ -296,12 +382,25 @@ export default function Dashboard() {
       const comparacion = opA.localeCompare(opB, undefined, { numeric: true, sensitivity: 'base' });
       return criterioOrden === 'operacion_asc' ? comparacion : -comparacion;
     }
-    return 0; 
+
+    const pesoA = getEstadoPeso(a.estado);
+    const pesoB = getEstadoPeso(b.estado);
+    if (pesoA !== pesoB) {
+      return pesoA - pesoB;
+    }
+
+    const fechaA = getFechaTimestamp(a);
+    const fechaB = getFechaTimestamp(b);
+
+    if (criterioOrden === 'fecha_asc') {
+      return fechaA - fechaB;
+    } else {
+      return fechaB - fechaA;
+    }
   });
 
   return (
     <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
-      {/* Cabecera y controles adaptados para móviles */}
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Operaciones en Curso</h1>
@@ -309,7 +408,6 @@ export default function Dashboard() {
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center w-full md:w-auto">
-          {/* Buscador con ancho completo en móvil */}
           <div className="relative w-full md:w-72">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-sm">
               🔍
@@ -322,7 +420,6 @@ export default function Dashboard() {
             />
           </div>
           
-          {/* Selector de ordenamiento adaptado */}
           <select 
             value={criterioOrden} 
             onChange={(e) => setCriterioOrden(e.target.value as any)}
@@ -334,7 +431,6 @@ export default function Dashboard() {
             <option value="operacion_desc">🔤 Operación: Z - A</option>
           </select>
 
-          {/* Menú de exportación optimizado para pantallas pequeñas */}
           <div className="relative w-full sm:w-auto" ref={menuRef}>
             <button 
               onClick={() => {
@@ -390,7 +486,6 @@ export default function Dashboard() {
         </div>
       </div>
       
-      {/* Tabla con celdas centradas verticalmente */}
       <div className="min-w-full w-fit bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <table className="w-full text-left border-collapse table-auto min-w-[900px]">
           <thead>
@@ -402,7 +497,7 @@ export default function Dashboard() {
               <th className="p-3 md:p-4 font-bold align-middle">Chofer</th>
               <th className="p-3 md:p-4 font-bold align-middle">Camión</th>
               <th className="p-3 md:p-4 font-bold align-middle">Semi</th>
-              <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Contenedor</th>
+              <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Bulto</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Comentarios</th>
               <th className="p-3 md:p-4 font-bold align-middle">Estado</th>
               <th className="p-3 md:p-4 font-bold align-middle">Acciones</th>
@@ -433,25 +528,31 @@ export default function Dashboard() {
 
               return (
                 <tr key={f.numero_fn} className={`border-t border-gray-100 transition text-xs md:text-sm ${renglonColor}`}>
-                  <td className="p-3 md:p-4 font-semibold text-gray-900 break-words whitespace-normal align-middle">{f.numero_fn}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.cliente || '-'}</td>
-                  <td className="p-3 md:p-4 font-bold uppercase text-gray-500 text-[10px] md:text-xs break-words whitespace-normal align-middle">{tipoMostrar}</td>
+                  <td className="p-3 md:p-4 font-semibold text-gray-900 break-words whitespace-normal align-middle">{highlightMatch(f.numero_fn, busqueda)}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.cliente || '-', busqueda)}</td>
+                  <td className="p-3 md:p-4 font-bold uppercase text-gray-500 text-[10px] md:text-xs break-words whitespace-normal align-middle">{highlightMatch(tipoMostrar, busqueda)}</td>
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.chofer}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.patente_camion}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{f.patente_semi}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.chofer, busqueda)}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.patente_camion, busqueda)}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.patente_semi, busqueda)}</td>
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
-                    <div>{f.contenedor_num} {f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}</div>
-                    {!llevaInfoDevolucion && (
+                    {f.tipo_operacion === 'carga_suelta' ? (
+                      <div>{highlightMatch(`${f.cantidad_bultos || ''} ${f.peso_bruto ? `(${f.peso_bruto})` : ''}`.trim(), busqueda)}</div>
+                    ) : (
                       <>
-                        {faltanCamposDevolucion ? (
-                          <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-medium leading-tight">
-                            <span>⚠️ Falta dev. / libre</span>
-                          </div>
-                        ) : (
-                          <div className="mt-0.5 text-[10px] text-gray-500 leading-tight break-words whitespace-normal">
-                            Dev: {f.lugar_devolucion} | Libre: {formatearFechaCortas(f.libre_hasta)}
-                          </div>
+                        <div>{highlightMatch(`${f.contenedor_num || ''} ${f.contenedor_tipo ? `(${f.contenedor_tipo})` : ''}`.trim(), busqueda)}</div>
+                        {!llevaInfoDevolucion && (
+                          <>
+                            {faltanCamposDevolucion ? (
+                              <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-medium leading-tight">
+                                <span>⚠️ Falta dev. / libre</span>
+                              </div>
+                            ) : (
+                              <div className="mt-0.5 text-[10px] text-gray-500 leading-tight break-words whitespace-normal">
+                                {highlightMatch(`Dev: ${f.lugar_devolucion} | Libre: ${formatearFechaCortas(f.libre_hasta)}`, busqueda)}
+                              </div>
+                            )}
+                          </>
                         )}
                       </>
                     )}
@@ -460,10 +561,10 @@ export default function Dashboard() {
                     {textoComentarioCompleto ? (
                       <details className="cursor-pointer group">
                         <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
-                          {textoComentarioCorto}
+                          {highlightMatch(textoComentarioCorto, busqueda)}
                         </summary>
                         <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
-                          {textoComentarioCompleto}
+                          {highlightMatch(textoComentarioCompleto, busqueda)}
                         </div>
                       </details>
                     ) : (
