@@ -148,11 +148,12 @@ export default function Dashboard() {
     const datosLimpios = datosAExportar.map(f => {
       const valorTram = String(f.tram || f.trm || '').trim().toUpperCase();
       const esTram = valorTram === 'SI';
+      const fechaHoraVal = f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga;
       return {
         "Operación": f.numero_fn || '',
         "Cliente": f.cliente || '',
         "Tipo Operación": esTram ? 'TRÁNSITO' : (f.tipo_operacion || ''),
-        "Fecha y Hora": f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga ? new Date(f.fecha_hora || f.fecha_carga_vacio || f.fecha_hora_carga).toLocaleString('es-AR') : '',
+        "Fecha y Hora": fechaHoraVal ? new Date(fechaHoraVal).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '',
         "Chofer": f.chofer || '',
         "Camión": f.patente_camion || '',
         "Semi": f.patente_semi || '',
@@ -262,7 +263,7 @@ export default function Dashboard() {
       datosEspecificos = [
         `Contenedor: ${flete.contenedor_num || ' '} (${flete.contenedor_tipo || ' '})`,
         `Origen: ${flete.origen || ' '}`,
-        `Fecha y Hora: ${flete.fecha_hora ? new Date(flete.fecha_hora).toLocaleString('es-AR') : ' '}`,
+        `Fecha y Hora: ${flete.fecha_hora ? new Date(flete.fecha_hora).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ' '}`,
         `Paradas: ${flete.paradas || 'Ninguna'}`,
         `Destino: ${flete.destino || ' '}`,
         `Devolución: ${flete.lugar_devolucion || ' '}`,
@@ -271,14 +272,14 @@ export default function Dashboard() {
     } else if (flete.tipo_operacion === 'exportacion') {
       datosEspecificos = [
         `Lugar Carga Vacío: ${flete.lugar_carga_vacio || ' '}`,
-        `Fecha y Hora: ${flete.fecha_carga_vacio ? new Date(flete.fecha_carga_vacio).toLocaleString('es-AR') : ' '}`,
+        `Fecha y Hora: ${flete.fecha_carga_vacio ? new Date(flete.fecha_carga_vacio).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ' '}`,
         `Lugar Carga Mercadería: ${flete.lugar_carga_mercaderia || ' '}`,
         `Lugar Entrega Lleno: ${flete.lugar_entrega_lleno || ' '}`
       ]
     } else if (flete.tipo_operacion === 'carga_suelta') {
       datosEspecificos = [
         `Lugar Carga: ${flete.lugar_carga || ' '}`,
-        `Fecha y Hora: ${flete.fecha_hora_carga ? new Date(flete.fecha_hora_carga).toLocaleString('es-AR') : ' '}`,
+        `Fecha y Hora: ${flete.fecha_hora_carga ? new Date(flete.fecha_hora_carga).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ' '}`,
         `Lugar Entrega: ${flete.lugar_entrega || ' '}`,
         `Cantidad Bultos: ${flete.cantidad_bultos || ' '}`,
         `Peso Bruto: ${flete.peso_bruto || ' '}`
