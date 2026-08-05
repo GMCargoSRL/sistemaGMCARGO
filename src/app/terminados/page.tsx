@@ -5,7 +5,8 @@ import * as XLSX from 'xlsx'
 
 export default function Terminados() {
   const [fletes, setFletes] = useState<any[]>([])
-  const [orden, setOrden] = useState<'asc' | 'desc'>('desc')
+  // MODIFICACIÓN: Agregamos 'az' y 'za' a los tipos permitidos para el estado del orden
+  const [orden, setOrden] = useState<'asc' | 'desc' | 'az' | 'za'>('desc')
   const [busqueda, setBusqueda] = useState('')
   
   const [mostrarMenuExportar, setMostrarMenuExportar] = useState(false)
@@ -245,12 +246,20 @@ export default function Terminados() {
     }
   };
 
+  // MODIFICACIÓN: Ajustamos la función para que evalúe si ordenar por fecha o por numero_fn
   async function getFletesTerminados() {
-    const { data, error } = await supabase
+    let query = supabase
       .from('fletes_nacionales')
       .select('*')
       .eq('estado', 'TERMINADO')
-      .order('fecha_hora', { ascending: orden === 'asc' })
+      
+    if (orden === 'az' || orden === 'za') {
+      query = query.order('numero_fn', { ascending: orden === 'az' })
+    } else {
+      query = query.order('fecha_hora', { ascending: orden === 'asc' })
+    }
+
+    const { data, error } = await query
       
     if (!error && data) {
       setFletes(data)
@@ -270,44 +279,13 @@ export default function Terminados() {
     }
   }
 
-  const levenshteinDistance = (a: string, b: string): number => {
-    const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
-    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-
-    for (let i = 1; i <= a.length; i++) {
-      for (let j = 1; j <= b.length; j++) {
-        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j] + 1,
-          matrix[i][j - 1] + 1,
-          matrix[i - 1][j - 1] + cost
-        );
-      }
-    }
-    return matrix[a.length][b.length];
-  };
-
-  const esCoincidenciaAproximada = (texto: string, busquedaStr: string): boolean => {
-    if (!busquedaStr) return true;
-    if (!texto) return false;
-    
-    const textoLower = texto.toLowerCase();
-    const busquedaLower = busquedaStr.toLowerCase();
-
-    if (textoLower.includes(busquedaLower)) return true;
-    if (busquedaLower.length <= 2) return textoLower.includes(busquedaLower);
-
-    const palabrasTexto = textoLower.split(/\s+/);
-    const maxErrores = busquedaLower.length <= 4 ? 1 : busquedaLower.length <= 8 ? 2 : 3;
-
-    for (const palabra of palabrasTexto) {
-      if (Math.abs(palabra.length - busquedaLower.length) > maxErrores) continue;
-      if (levenshteinDistance(palabra, busquedaLower) <= maxErrores) return true;
-      if (palabra.includes(busquedaLower)) return true;
-    }
-
-    return false;
+  // --- MOTOR DE BÚSQUEDA MEJORADO ---
+  const normalizarTexto = (texto: string) => {
+    if (!texto) return '';
+    return String(texto)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
   };
 
   const resaltarTexto = (textoOriginal: string, busquedaStr: string) => {
@@ -315,56 +293,36 @@ export default function Terminados() {
     if (!busquedaStr || busquedaStr.trim() === '') return textoOriginal;
 
     const textoStr = String(textoOriginal);
-    const query = busquedaStr.trim();
-    const queryLower = query.toLowerCase();
-    const textoLower = textoStr.toLowerCase();
+    const terminos = busquedaStr.trim().split(/\s+/).filter(Boolean);
 
-    if (textoLower.includes(queryLower)) {
-      const escapedQuery = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp(`(${escapedQuery})`, 'gi');
-      const partes = textoStr.split(regex);
-      return partes.map((parte, i) => {
-        if (parte.toLowerCase() === queryLower) {
-          return <mark key={i} className="bg-yellow-300 text-gray-900 rounded px-0.5 font-semibold">{parte}</mark>;
-        }
-        return parte;
-      });
-    }
+    if (terminos.length === 0) return textoStr;
 
-    if (queryLower.length <= 2) return textoStr;
+    const escapedTerms = terminos.map(t => t.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
+    const regex = new RegExp(`(${escapedTerms})`, 'gi');
+    const partes = textoStr.split(regex);
 
-    const palabras = textoStr.split(/(\s+)/);
-    const maxErrores = queryLower.length <= 4 ? 1 : queryLower.length <= 8 ? 2 : 3;
-
-    return palabras.map((palabra, idx) => {
-      const palabraTrim = palabra.trim();
-      if (!palabraTrim) return palabra;
-
-      const palabraLower = palabraTrim.toLowerCase();
-      let coincide = false;
-
-      if (palabraLower.includes(queryLower) || queryLower.includes(palabraLower)) {
-        coincide = true;
-      } else if (Math.abs(palabraLower.length - queryLower.length) <= maxErrores) {
-        if (levenshteinDistance(palabraLower, queryLower) <= maxErrores) {
-          coincide = true;
-        }
-      }
-
+    return partes.map((parte, i) => {
+      const coincide = terminos.some(t => normalizarTexto(t) === normalizarTexto(parte));
       if (coincide) {
-        return <mark key={idx} className="bg-yellow-300 text-gray-900 rounded px-0.5 font-semibold">{palabra}</mark>;
+        return <mark key={i} className="bg-yellow-300 text-gray-900 rounded px-0.5 font-semibold">{parte}</mark>;
       }
-      return palabra;
+      return parte;
     });
   };
 
   const queryBusqueda = busqueda.trim();
-  
-  let fletesFiltrados = fletes.filter((f) => 
-    Object.values(f).some((valor) => 
-      esCoincidenciaAproximada(String(valor || ''), queryBusqueda)
-    )
-  );
+  const terminosBusqueda = normalizarTexto(queryBusqueda).split(/\s+/).filter(Boolean);
+
+  let fletesFiltrados = fletes.filter((f) => {
+    if (terminosBusqueda.length === 0) return true;
+    
+    // Concatenamos todos los valores relevantes del flete para buscar globalmente
+    const textoFila = normalizarTexto(Object.values(f).join(' '));
+    
+    // TODAS las palabras buscadas deben existir en alguna parte de la fila (AND Lógico)
+    return terminosBusqueda.every(termino => textoFila.includes(termino));
+  });
+  // ----------------------------------
 
   return (
     <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
@@ -390,13 +348,16 @@ export default function Terminados() {
           </div>
           
           {/* Selector de ordenamiento */}
+          {/* MODIFICACIÓN: Agregamos las nuevas opciones (A-Z y Z-A) al select */}
           <select 
             value={orden} 
-            onChange={(e) => setOrden(e.target.value as any)}
+            onChange={(e) => setOrden(e.target.value as 'asc' | 'desc' | 'az' | 'za')}
             className="bg-white border border-gray-200 text-gray-700 px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-full sm:w-auto shrink-0"
           >
             <option value="desc">📅 Más Recientes</option>
             <option value="asc">📅 Más Antiguos</option>
+            <option value="az">🔤 Op. A-Z</option>
+            <option value="za">🔤 Op. Z-A</option>
           </select>
 
           {/* Menú de exportación */}

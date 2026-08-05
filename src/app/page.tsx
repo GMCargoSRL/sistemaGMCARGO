@@ -25,26 +25,64 @@ function levenshtein(a: string, b: string): number {
   return matrix[bn][an];
 }
 
-function cumpleBusquedaAproximada(valor: any, query: string): boolean {
-  if (!valor) return false;
+// NUEVA FUNCIÓN: Asigna un puntaje de relevancia a la coincidencia
+function obtenerPuntajeSimilitud(valor: any, query: string): number {
+  if (!valor) return 0;
   const strVal = String(valor).toLowerCase();
   const q = query.toLowerCase().trim();
-  if (!q) return true;
+  if (!q) return 1;
 
-  if (strVal.includes(q)) return true;
+  // 1. Coincidencia exacta (El mejor puntaje)
+  if (strVal === q) return 1000;
 
+  // 2. Coincidencia como prefijo o subcadena exacta (Ideal para número de contenedores)
+  let baseScore = 0;
+  if (strVal.startsWith(q)) baseScore = 500;
+  else if (strVal.includes(q)) baseScore = 200;
+
+  // 3. Coincidencia laxa por palabras (Tokens)
   const palabrasQuery = q.split(/\s+/);
   const tokensVal = strVal.split(/[\s-_]+/);
 
-  return palabrasQuery.some(pq => {
-    if (pq.length === 0) return false;
-    return tokensVal.some(token => {
-      if (token.includes(pq) || pq.includes(token)) return true;
-      const maxDist = pq.length <= 4 ? 1 : 2;
-      if (Math.abs(token.length - pq.length) > maxDist) return false;
-      return levenshtein(token, pq) <= maxDist;
+  let tokenScoreTotal = 0;
+  let coincidenciaLaxa = false;
+
+  palabrasQuery.forEach(pq => {
+    if (pq.length === 0) return;
+    let bestTokenScore = 0;
+    
+    tokensVal.forEach(token => {
+      if (token === pq) {
+        bestTokenScore = Math.max(bestTokenScore, 100); // Palabra exacta
+      } else if (token.startsWith(pq)) {
+        bestTokenScore = Math.max(bestTokenScore, 80);  // Empieza con la palabra
+      } else if (token.includes(pq) || pq.includes(token)) {
+        bestTokenScore = Math.max(bestTokenScore, 50);  // Contiene la palabra
+      } else {
+        // Tolerancia a errores de tipeo (Levenshtein)
+        const maxDist = pq.length <= 4 ? 1 : 2;
+        if (Math.abs(token.length - pq.length) <= maxDist) {
+          const dist = levenshtein(token, pq);
+          if (dist <= maxDist) {
+            // Mientras menor la distancia, mayor el puntaje (dist=1 -> 20pts, dist=2 -> 10pts)
+            bestTokenScore = Math.max(bestTokenScore, 30 - (dist * 10));
+          }
+        }
+      }
     });
+    
+    if (bestTokenScore > 0) {
+      coincidenciaLaxa = true;
+      tokenScoreTotal += bestTokenScore;
+    }
   });
+
+  // Retornamos el puntaje más alto entre la búsqueda exacta y la suma de coincidencias laxas
+  if (coincidenciaLaxa || baseScore > 0) {
+    return Math.max(baseScore, tokenScoreTotal);
+  }
+  
+  return 0;
 }
 
 function highlightMatch(text: any, query: string): React.ReactNode {
@@ -360,9 +398,23 @@ export default function Dashboard() {
 
   const queryBusqueda = busqueda.trim().toLowerCase();
   
-  let fletesFiltrados = fletes.filter((f) => 
-    Object.values(f).some((valor) => cumpleBusquedaAproximada(valor, queryBusqueda))
-  );
+  // 1. Mapeamos los fletes calculando su puntaje de búsqueda
+  const fletesConPuntaje = fletes.map(f => {
+    if (!queryBusqueda) return { ...f, _searchScore: 1 };
+    
+    let maxScore = 0;
+    Object.values(f).forEach(valor => {
+      const score = obtenerPuntajeSimilitud(valor, queryBusqueda);
+      if (score > maxScore) maxScore = score;
+    });
+    
+    return { ...f, _searchScore: maxScore };
+  });
+
+  // 2. Filtramos solo los que superan un puntaje mayor a 0 (si hay búsqueda)
+  const fletesFiltrados = queryBusqueda 
+    ? fletesConPuntaje.filter(f => f._searchScore > 0)
+    : fletesConPuntaje;
 
   const getEstadoPeso = (estado: string) => {
     const est = (estado || 'EN PREPARACIÓN').toUpperCase();
@@ -376,7 +428,17 @@ export default function Dashboard() {
     return isNaN(time) ? 0 : time;
   };
 
+  // 3. Ordenamos: Si hay búsqueda priorizamos el puntaje, si no, los filtros del menú
   const fletesOrdenadosFinal = [...fletesFiltrados].sort((a, b) => {
+    
+    // ORDEN PRIORITARIO POR RELEVANCIA DE BÚSQUEDA
+    if (queryBusqueda) {
+      if (a._searchScore !== b._searchScore) {
+        return b._searchScore - a._searchScore; // Mayor a menor puntaje
+      }
+    }
+
+    // ORDEN SECUNDARIO (El que eligió el usuario en el select)
     if (criterioOrden === 'operacion_asc' || criterioOrden === 'operacion_desc') {
       const opA = String(a.numero_fn || '').replace(/\s+/g, '').toLowerCase();
       const opB = String(b.numero_fn || '').replace(/\s+/g, '').toLowerCase();
