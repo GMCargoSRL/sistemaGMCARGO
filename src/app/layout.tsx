@@ -59,6 +59,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Operaciones</Link>
               <Link href="/fletes" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Nueva Operación</Link>
               <Link href="/terminados" className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Terminados</Link>
+              
+              {/* NUEVA PESTAÑA AGREGADA: Facturación */}
+              <Link href="/facturacion" className="block p-3 hover:bg-yellow-600 rounded text-orange-300 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Facturación</Link>
             </nav>
           </div>
         </aside>

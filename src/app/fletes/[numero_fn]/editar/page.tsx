@@ -42,7 +42,8 @@ export default function EditarFletePage() {
         setForm({
           ...flete,
           tram: flete.tram || 'NO',
-          tipo_operacion: flete.tipo_operacion || 'importacion'
+          tipo_operacion: flete.tipo_operacion || 'importacion',
+          estado_facturacion: flete.estado_facturacion || 'PENDIENTE' // <-- Inicialización del campo de facturación
         })
         setModificado(false)
       }
@@ -274,7 +275,8 @@ export default function EditarFletePage() {
               <input type="text" placeholder="Nº Op. (VN-0001)" className="border p-2 flex-1 rounded uppercase bg-gray-100 text-gray-500 cursor-not-allowed" value={form.numero_fn || ''} readOnly />
             </div>
             
-            <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-3" value={form.cliente || ''} onChange={e => updateForm({ cliente: e.target.value })} />
+            {/* Ajustado a md:col-span-2 para dejar espacio al campo de facturación */}
+            <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-2" value={form.cliente || ''} onChange={e => updateForm({ cliente: e.target.value })} />
             <datalist id="lista-clientes">
               {clientes
                 .filter((c: any) => c["Razon Social"])
@@ -284,6 +286,16 @@ export default function EditarFletePage() {
             </datalist>
 
             <input type="text" placeholder="Documento Aduanero" className="border p-2 rounded md:col-span-1" value={form.documento_aduanero || ''} onChange={e => updateForm({ documento_aduanero: e.target.value })} />
+            
+            {/* Nuevo campo agregado de facturación */}
+            <div className="flex items-center gap-2 border p-2 rounded bg-white md:col-span-1">
+              <label className="text-[10px] text-gray-500 font-bold whitespace-nowrap uppercase">¿Se Factura?</label>
+              <select className="flex-1 outline-none text-sm bg-transparent" value={form.estado_facturacion || 'PENDIENTE'} onChange={e => updateForm({ estado_facturacion: e.target.value })}>
+                <option value="PENDIENTE">PENDIENTE</option>
+                <option value="SI">SI</option>
+                <option value="NO">NO</option>
+              </select>
+            </div>
           </div>
         </section>
 

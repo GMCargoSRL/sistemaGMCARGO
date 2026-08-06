@@ -640,8 +640,27 @@ export default function Dashboard() {
                       value={estadoActual} 
                       onChange={async (e) => { 
                         const nuevoEstado = e.target.value; 
-                        await supabase.from('fletes_nacionales').update({ estado: nuevoEstado }).eq('numero_fn', f.numero_fn);
                         
+                        const datosActualizacion: any = { estado: nuevoEstado };
+                        if (nuevoEstado === 'TERMINADO') {
+                          datosActualizacion.fecha_terminado = new Date().toISOString();
+                        }
+
+                        await supabase.from('fletes_nacionales').update(datosActualizacion).eq('numero_fn', f.numero_fn);
+                        
+                        // Lógica automática de facturación
+                        if (nuevoEstado === 'TERMINADO') {
+                          const facturarStr = String(f.facturar || '').trim().toUpperCase();
+                          if (facturarStr === 'SI' || f.facturar === true) {
+                            await supabase.from('facturacion').insert({
+                              numero_fn: f.numero_fn,
+                              cliente: f.cliente,
+                              estado_facturacion: 'PENDIENTE',
+                              fecha_completado: new Date().toISOString()
+                            });
+                          }
+                        }
+
                         let nuevosFletes;
                         if (nuevoEstado === 'TERMINADO') {
                           nuevosFletes = fletes.filter((item: any) => item.numero_fn !== f.numero_fn);

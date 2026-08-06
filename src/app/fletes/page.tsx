@@ -15,7 +15,8 @@ const ESTADO_INICIAL = {
   lugar_carga: '', fecha_hora_carga: '', documento_aduanero: '', 
   cantidad_bultos: '', peso_bruto: '', lugar_entrega: '',
   tipo_operacion: 'importacion',
-  tram: 'NO'
+  tram: 'NO',
+  estado_facturacion: 'PENDIENTE' // <-- Nuevo campo agregado
 }
 
 const formatDateTimeLocal = (dateString: string) => dateString ? dateString.substring(0, 16) : '';
@@ -221,7 +222,7 @@ export default function FletesPage() {
     })
 
     const { error } = await supabase.from('fletes_nacionales').insert([dataToSend])
-     
+      
     if (error) {
       toast.error("Error: " + error.message)
     } else { 
@@ -321,7 +322,7 @@ export default function FletesPage() {
             <option value="exportacion">Exportación</option>
             <option value="carga_suelta">Carga Suelta</option>
           </select>
-           
+            
           {form.tipo_operacion === 'importacion' ? (
             <div className="flex items-center gap-2 border p-2 rounded bg-white">
               <label className="text-xs text-gray-600 font-bold whitespace-nowrap">TRAM:</label>
@@ -336,8 +337,9 @@ export default function FletesPage() {
             <input type="text" placeholder="Nº Op. (VN-0001) *" required className="border p-2 flex-1 rounded uppercase" value={form.numero_fn} onChange={(e) => setForm({...form, numero_fn: e.target.value.toUpperCase()})} />
             <button type="button" onClick={generarVN} className="bg-sky-600 hover:bg-sky-700 text-white px-4 rounded font-bold text-sm transition">Generar</button>
           </div>
-           
-          <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-3" value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})} />
+            
+          {/* ACHICAMOS DE md:col-span-3 A md:col-span-2 PARA HACERLE LUGAR AL SELECTOR */}
+          <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-2" value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})} />
           <datalist id="lista-clientes">
             {clientes.filter((c: any) => c && c["Razon Social"]).map((c: any) => (
               <option key={c["Razon Social"]} value={c["Razon Social"]} />
@@ -345,6 +347,16 @@ export default function FletesPage() {
           </datalist>
 
           <input type="text" placeholder="Documento Aduanero" className="border p-2 rounded md:col-span-1" value={form.documento_aduanero} onChange={e => setForm({...form, documento_aduanero: e.target.value})} />
+          
+          {/* NUEVO CAMPO DE FACTURACIÓN (AGREGADO EN EL LUGAR QUE SOLICITASTE) */}
+          <div className="flex items-center gap-2 border p-2 rounded bg-white md:col-span-1">
+            <label className="text-[10px] text-gray-500 font-bold whitespace-nowrap uppercase">¿Se Factura?</label>
+            <select className="flex-1 outline-none text-sm bg-transparent" value={form.estado_facturacion} onChange={e => setForm({...form, estado_facturacion: e.target.value})}>
+              <option value="PENDIENTE">PENDIENTE</option>
+              <option value="SI">SI</option>
+              <option value="NO">NO</option>
+            </select>
+          </div>
         </div>
       </section>
 
@@ -403,7 +415,7 @@ export default function FletesPage() {
       </section>
 
       <textarea className="w-full border p-4 rounded-lg" placeholder="Notas adicionales..." value={form.notas_adicionales} onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
-       
+        
       <div className="flex flex-col gap-3">
         <button type="submit" className="w-full bg-sky-600 text-white p-4 font-bold rounded-lg hover:bg-sky-700 transition shadow-lg">Guardar Operación</button>
         <button type="button" onClick={handleCancelar} className="w-full bg-red-400 text-white p-3 font-bold rounded-lg hover:bg-red-500 transition">Cancelar</button>
@@ -447,7 +459,7 @@ export default function FletesPage() {
       {operacionGuardada && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border border-gray-100 text-center animate-in fade-in zoom-in duration-200">
-             
+              
             <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="text-emerald-600 text-3xl font-bold">✓</span>
             </div>
