@@ -16,7 +16,7 @@ const ESTADO_INICIAL = {
   cantidad_bultos: '', peso_bruto: '', lugar_entrega: '',
   tipo_operacion: 'importacion',
   tram: 'NO',
-  estado_facturacion: 'PENDIENTE' // <-- Nuevo campo agregado
+  estado_facturacion: 'SI' // <-- Establecido en 'SI' por defecto
 }
 
 const formatDateTimeLocal = (dateString: string) => dateString ? dateString.substring(0, 16) : '';
@@ -42,6 +42,7 @@ export default function FletesPage() {
   const hayDatosCargados = Object.entries(form).some(([key, value]) => {
     if (key === 'tipo_operacion') return value !== 'importacion'
     if (key === 'tram') return value !== 'NO'
+    if (key === 'estado_facturacion') return value !== 'SI'
     return value !== ''
   })
 
@@ -326,7 +327,7 @@ export default function FletesPage() {
           {form.tipo_operacion === 'importacion' ? (
             <div className="flex items-center gap-2 border p-2 rounded bg-white">
               <label className="text-xs text-gray-600 font-bold whitespace-nowrap">TRAM:</label>
-              <select className="flex-1 outline-none text-sm" value={form.tram} onChange={e => setForm({...form, tram: e.target.value})}>
+              <select className="flex-1 outline-none text-sm bg-transparent cursor-pointer" value={form.tram} onChange={e => setForm({...form, tram: e.target.value})}>
                 <option value="NO">NO</option>
                 <option value="SI">SI</option>
               </select>
@@ -338,7 +339,6 @@ export default function FletesPage() {
             <button type="button" onClick={generarVN} className="bg-sky-600 hover:bg-sky-700 text-white px-4 rounded font-bold text-sm transition">Generar</button>
           </div>
             
-          {/* ACHICAMOS DE md:col-span-3 A md:col-span-2 PARA HACERLE LUGAR AL SELECTOR */}
           <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-2" value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})} />
           <datalist id="lista-clientes">
             {clientes.filter((c: any) => c && c["Razon Social"]).map((c: any) => (
@@ -348,13 +348,13 @@ export default function FletesPage() {
 
           <input type="text" placeholder="Documento Aduanero" className="border p-2 rounded md:col-span-1" value={form.documento_aduanero} onChange={e => setForm({...form, documento_aduanero: e.target.value})} />
           
-          {/* NUEVO CAMPO DE FACTURACIÓN (AGREGADO EN EL LUGAR QUE SOLICITASTE) */}
-          <div className="flex items-center gap-2 border p-2 rounded bg-white md:col-span-1">
-            <label className="text-[10px] text-gray-500 font-bold whitespace-nowrap uppercase">¿Se Factura?</label>
-            <select className="flex-1 outline-none text-sm bg-transparent" value={form.estado_facturacion} onChange={e => setForm({...form, estado_facturacion: e.target.value})}>
-              <option value="PENDIENTE">PENDIENTE</option>
+          {/* Bloque de Facturación perfectamente alineado y contenido */}
+          <div className="flex items-center justify-between gap-1 border px-3 py-2 rounded bg-white md:col-span-1">
+            <span className="text-[13px] text-gray-500 font-nowrap">¿Se Factura?</span>
+            <select className="outline-none text-sm bg-transparent cursor-pointer font-medium text-right" value={form.estado_facturacion} onChange={e => setForm({...form, estado_facturacion: e.target.value})}>
               <option value="SI">SI</option>
               <option value="NO">NO</option>
+              <option value="FACTURADO">FACTURADO</option>
             </select>
           </div>
         </div>

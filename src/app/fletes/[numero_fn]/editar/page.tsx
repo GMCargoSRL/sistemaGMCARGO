@@ -43,7 +43,7 @@ export default function EditarFletePage() {
           ...flete,
           tram: flete.tram || 'NO',
           tipo_operacion: flete.tipo_operacion || 'importacion',
-          estado_facturacion: flete.estado_facturacion || 'PENDIENTE' // <-- Inicialización del campo de facturación
+          estado_facturacion: flete.estado_facturacion || 'FACTURADO' // <-- Inicialización del campo de facturación
         })
         setModificado(false)
       }
@@ -285,19 +285,25 @@ export default function EditarFletePage() {
               ))}
             </datalist>
 
-            <input type="text" placeholder="Documento Aduanero" className="border p-2 rounded md:col-span-1" value={form.documento_aduanero || ''} onChange={e => updateForm({ documento_aduanero: e.target.value })} />
-            
-            {/* Nuevo campo agregado de facturación */}
-            <div className="flex items-center gap-2 border p-2 rounded bg-white md:col-span-1">
-              <label className="text-[10px] text-gray-500 font-bold whitespace-nowrap uppercase">¿Se Factura?</label>
-              <select className="flex-1 outline-none text-sm bg-transparent" value={form.estado_facturacion || 'PENDIENTE'} onChange={e => updateForm({ estado_facturacion: e.target.value })}>
-                <option value="PENDIENTE">PENDIENTE</option>
-                <option value="SI">SI</option>
-                <option value="NO">NO</option>
-              </select>
-            </div>
+<input 
+  type="text" 
+  placeholder="Documento Aduanero" 
+  className="border p-2 rounded md:col-span-1" 
+  value={form.documento_aduanero || ""} 
+  onChange={e => setForm({...form, documento_aduanero: e.target.value})} 
+/>
+          
+          {/* Bloque de Facturación perfectamente alineado y contenido */}
+          <div className="flex items-center justify-between gap-1 border px-3 py-2 rounded bg-white md:col-span-1">
+            <span className="text-[13px] text-gray-500 font-nowrap">¿Se Factura?</span>
+            <select className="outline-none text-sm bg-transparent cursor-pointer font-medium text-right" value={form.estado_facturacion} onChange={e => setForm({...form, estado_facturacion: e.target.value})}>
+              <option value="SI">SI</option>
+              <option value="NO">NO</option>
+              <option value="FACTURADO">FACTURADO</option>
+            </select>
           </div>
-        </section>
+        </div>
+      </section>
 
         <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Detalles de la Carga</h3>
