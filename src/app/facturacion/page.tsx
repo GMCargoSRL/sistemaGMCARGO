@@ -1,7 +1,125 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+
+// Funciones auxiliares para búsqueda aproximada y resaltado (igual que en principal)
+function levenshtein(a: string, b: string): number {
+  const an = a.length;
+  const bn = b.length;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix = Array.from({ length: bn + 1 }, () => Array(an + 1).fill(0));
+  for (let i = 0; i <= bn; i++) matrix[i][0] = i;
+  for (let j = 0; j <= an; j++) matrix[0][j] = j;
+  for (let i = 1; i <= bn; i++) {
+    for (let j = 1; j <= an; j++) {
+      const cost = b.charAt(i - 1) === a.charAt(j - 1) ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return matrix[bn][an];
+}
+
+function obtenerPuntajeSimilitud(valor: any, query: string): number {
+  if (!valor) return 0;
+  const strVal = String(valor).toLowerCase();
+  const q = query.toLowerCase().trim();
+  if (!q) return 1;
+
+  if (strVal === q) return 1000;
+
+  let baseScore = 0;
+  if (strVal.startsWith(q)) baseScore = 500;
+  else if (strVal.includes(q)) baseScore = 200;
+
+  const palabrasQuery = q.split(/\s+/);
+  const tokensVal = strVal.split(/[\s-_]+/);
+
+  let tokenScoreTotal = 0;
+  let coincidenciaLaxa = false;
+
+  palabrasQuery.forEach(pq => {
+    if (pq.length === 0) return;
+    let bestTokenScore = 0;
+    
+    tokensVal.forEach(token => {
+      if (token === pq) {
+        bestTokenScore = Math.max(bestTokenScore, 100);
+      } else if (token.startsWith(pq)) {
+        bestTokenScore = Math.max(bestTokenScore, 80);
+      } else if (token.includes(pq) || pq.includes(token)) {
+        bestTokenScore = Math.max(bestTokenScore, 50);
+      } else {
+        const maxDist = pq.length <= 4 ? 1 : 2;
+        if (Math.abs(token.length - pq.length) <= maxDist) {
+          const dist = levenshtein(token, pq);
+          if (dist <= maxDist) {
+            bestTokenScore = Math.max(bestTokenScore, 30 - (dist * 10));
+          }
+        }
+      }
+    });
+    
+    if (bestTokenScore > 0) {
+      coincidenciaLaxa = true;
+      tokenScoreTotal += bestTokenScore;
+    }
+  });
+
+  if (coincidenciaLaxa || baseScore > 0) {
+    return Math.max(baseScore, tokenScoreTotal);
+  }
+  
+  return 0;
+}
+
+function highlightMatch(text: any, query: string): React.ReactNode {
+  if (!text) return '-';
+  const strText = String(text);
+  const q = query.trim().toLowerCase();
+  if (!q) return strText;
+
+  const lowerText = strText.toLowerCase();
+  let index = lowerText.indexOf(q);
+  if (index !== -1) {
+    const before = strText.substring(0, index);
+    const match = strText.substring(index, index + q.length);
+    const after = strText.substring(index + q.length);
+    return (
+      <>
+        {before}
+        <mark className="bg-yellow-200 text-gray-900 rounded px-0.5">{match}</mark>
+        {highlightMatch(after, q)}
+      </>
+    );
+  }
+
+  const palabrasQuery = q.split(/\s+/).filter(p => p.length > 0);
+  if (palabrasQuery.length === 0) return strText;
+
+  const parts = strText.split(/([\s-_]+)/);
+  return parts.map((part, i) => {
+    const lowerPart = part.toLowerCase();
+    const isMatched = palabrasQuery.some(pq => {
+      if (lowerPart.includes(pq) || pq.includes(lowerPart)) return true;
+      if (lowerPart.length >= 2 && pq.length >= 2) {
+        const maxDist = pq.length <= 4 ? 1 : 2;
+        return Math.abs(lowerPart.length - pq.length) <= maxDist && levenshtein(lowerPart, pq) <= maxDist;
+      }
+      return false;
+    });
+
+    if (isMatched && part.trim().length > 0) {
+      return <mark key={i} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>;
+    }
+    return part;
+  });
+}
 
 export default function FacturacionPage() {
   const [operaciones, setOperaciones] = useState<any[]>([]);
@@ -9,6 +127,8 @@ export default function FacturacionPage() {
   const [mensajeAlerta, setMensajeAlerta] = useState<string | null>(null);
   const [seleccionadas, setSeleccionadas] = useState<string[]>([]);
   const [modoSeleccion, setModoSeleccion] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [criterioOrden, setCriterioOrden] = useState<'fecha_asc' | 'fecha_desc' | 'operacion_asc' | 'operacion_desc'>('fecha_asc');
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -318,69 +438,135 @@ export default function FacturacionPage() {
     doc.save(`Orden Carga ${flete.numero_fn}.pdf`);
   };
 
+  // Filtrado y ordenamiento similar a la página principal
+  const queryBusqueda = busqueda.trim().toLowerCase();
+  
+  const operacionesConPuntaje = operaciones.map(op => {
+    if (!queryBusqueda) return { ...op, _searchScore: 1 };
+    let maxScore = 0;
+    Object.values(op).forEach(valor => {
+      const score = obtenerPuntajeSimilitud(valor, queryBusqueda);
+      if (score > maxScore) maxScore = score;
+    });
+    return { ...op, _searchScore: maxScore };
+  });
+
+  const operacionesFiltradas = queryBusqueda 
+    ? operacionesConPuntaje.filter(op => op._searchScore > 0)
+    : operacionesConPuntaje;
+
+  const operacionesOrdenadasFinal = [...operacionesFiltradas].sort((a, b) => {
+    if (queryBusqueda) {
+      if (a._searchScore !== b._searchScore) {
+        return b._searchScore - a._searchScore;
+      }
+    }
+
+    if (criterioOrden === 'operacion_asc' || criterioOrden === 'operacion_desc') {
+      const opA = String(a.numero_fn || '').replace(/\s+/g, '').toLowerCase();
+      const opB = String(b.numero_fn || '').replace(/\s+/g, '').toLowerCase();
+      const comparacion = opA.localeCompare(opB, undefined, { numeric: true, sensitivity: 'base' });
+      return criterioOrden === 'operacion_asc' ? comparacion : -comparacion;
+    }
+
+    const fechaA = new Date(a.fecha_hora || a.fecha_carga_vacio || a.fecha_hora_carga || 0).getTime();
+    const fechaB = new Date(b.fecha_hora || b.fecha_carga_vacio || b.fecha_hora_carga || 0).getTime();
+
+    if (criterioOrden === 'fecha_asc') {
+      return fechaA - fechaB;
+    } else {
+      return fechaB - fechaA;
+    }
+  });
+
   const colSpanTotal = modoSeleccion ? 10 : 9;
 
   return (
-    <div className="p-6 max-w-[95vw] mx-auto">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
+      {/* Cabecera idéntica a la principal adaptada para facturación */}
+      <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Facturación Pendiente</h1>
-          <p className="text-gray-500 mt-2">
-            Operaciones terminadas con estado de facturación en &quot;SI&quot;.
-          </p>
+          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Facturación Pendiente</h1>
+          <p className="text-xs md:text-sm text-gray-500 mt-0.5">Operaciones terminadas con estado de facturación en &quot;SI&quot;.</p>
         </div>
-        <div className="flex items-center gap-3">
-          {operaciones.length > 0 && (
-            <>
-              {!modoSeleccion ? (
-                <button
-                  onClick={() => setModoSeleccion(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm"
-                >
-                  📄 Imprimir Lista
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={generarPDFListaSeleccionadas}
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm ${
-                      seleccionadas.length > 0 
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
-                        : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                    }`}
-                  >
-                    📄 Generar PDF ({seleccionadas.length})
-                  </button>
-                  <button
-                    onClick={() => {
-                      setModoSeleccion(false);
-                      setSeleccionadas([]);
-                    }}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-xl text-sm font-semibold transition cursor-pointer shadow-sm"
-                    title="Cancelar selección"
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-          <button 
-            onClick={obtenerFacturacionPendiente}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm"
+        
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center w-full md:w-auto">
+          <div className="relative w-full md:w-72">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-sm">
+              🔍
+            </span>
+            <input 
+              type="text" 
+              placeholder="Buscar operación, chofer, cliente..." 
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 placeholder-gray-400" 
+              onChange={(e) => setBusqueda(e.target.value)} 
+            />
+          </div>
+          
+          <select 
+            value={criterioOrden} 
+            onChange={(e) => setCriterioOrden(e.target.value as any)}
+            className="bg-white border border-gray-200 text-gray-700 px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-full sm:w-auto shrink-0"
           >
-            🔄 Actualizar
-          </button>
+            <option value="fecha_asc">📅 Más Próximos</option>
+            <option value="fecha_desc">📅 Más Lejanos</option>
+            <option value="operacion_asc">🔤 Operación: A - Z</option>
+            <option value="operacion_desc">🔤 Operación: Z - A</option>
+          </select>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {operaciones.length > 0 && (
+              <>
+                {!modoSeleccion ? (
+                  <button
+                    onClick={() => setModoSeleccion(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full sm:w-auto"
+                  >
+                    📄 Imprimir Lista
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <button
+                      onClick={generarPDFListaSeleccionadas}
+                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full ${
+                        seleccionadas.length > 0 
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
+                          : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                      }`}
+                    >
+                      📄 PDF ({seleccionadas.length})
+                    </button>
+                    <button
+                      onClick={() => {
+                        setModoSeleccion(false);
+                        setSeleccionadas([]);
+                      }}
+                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer shadow-sm"
+                      title="Cancelar selección"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+            <button 
+              onClick={obtenerFacturacionPendiente}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full sm:w-auto"
+            >
+              🔄
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white shadow-md rounded-2xl overflow-hidden border border-gray-200">
+      <div className="min-w-full w-fit bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 text-xs font-bold text-gray-600 uppercase tracking-wider">
+          <table className="w-full text-left border-collapse table-auto min-w-[900px]">
+            <thead className="bg-gray-50 text-xs md:text-sm text-gray-600 border-b border-gray-200">
               <tr>
                 {modoSeleccion && (
-                  <th className="px-4 py-4 text-center w-12">
+                  <th className="p-3 md:p-4 text-center w-12 align-middle">
                     <input 
                       type="checkbox"
                       checked={operaciones.length > 0 && seleccionadas.length === operaciones.length}
@@ -389,32 +575,32 @@ export default function FacturacionPage() {
                     />
                   </th>
                 )}
-                <th className="px-5 py-4 text-left">ID Carga</th>
-                <th className="px-5 py-4 text-left">Cliente</th>
-                <th className="px-5 py-4 text-left">Ruta</th>
-                <th className="px-5 py-4 text-left">Fecha de Carga</th>
-                <th className="px-5 py-4 text-left">Tipo de Carga</th>
-                <th className="px-5 py-4 text-left">Chofer y Unidad</th>
-                <th className="px-5 py-4 text-left">Notas</th>
-                <th className="px-5 py-4 text-left">Tipo Op.</th>
-                <th className="px-5 py-4 text-center">Acción</th>
+                <th className="p-3 md:p-4 font-bold align-middle">ID Carga</th>
+                <th className="p-3 md:p-4 font-bold align-middle">Cliente</th>
+                <th className="p-3 md:p-4 font-bold align-middle min-w-[260px]">Ruta</th>
+                <th className="p-3 md:p-4 font-bold align-middle">Fecha de Carga</th>
+                <th className="p-3 md:p-4 font-bold align-middle">Tipo de Carga</th>
+                <th className="p-3 md:p-4 font-bold align-middle">Chofer y Unidad</th>
+                <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Notas</th>
+                <th className="p-3 md:p-4 font-bold align-middle">Tipo Op.</th>
+                <th className="p-3 md:p-4 font-bold align-middle text-center">Acción</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100 text-sm">
+            <tbody className="bg-white divide-y divide-gray-100 text-xs md:text-sm">
               {cargando ? (
                 <tr>
-                  <td colSpan={colSpanTotal} className="px-6 py-12 text-center text-gray-400 text-base">
+                  <td colSpan={colSpanTotal} className="p-12 text-center text-gray-400 text-base">
                     Cargando operaciones pendientes...
                   </td>
                 </tr>
-              ) : operaciones.length === 0 ? (
+              ) : operacionesOrdenadasFinal.length === 0 ? (
                 <tr>
-                  <td colSpan={colSpanTotal} className="px-6 py-12 text-center text-gray-500 text-base">
-                    No hay operaciones pendientes de facturar. ¡Todo al día! 🎉
+                  <td colSpan={colSpanTotal} className="p-12 text-center text-gray-500 text-base">
+                    No hay operaciones pendientes de facturar que coincidan con la búsqueda. ¡Todo al día! 🎉
                   </td>
                 </tr>
               ) : (
-                operaciones.map((op) => {
+                operacionesOrdenadasFinal.map((op) => {
                   const fechaFin = op.fecha_terminado || op.updated_at || op.fecha_hora;
                   const fechaFormateada = fechaFin 
                     ? new Date(fechaFin).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) 
@@ -434,13 +620,17 @@ export default function FacturacionPage() {
                     detalleCarga = `Contenedor: ${op.contenedor_num || 'S/N'} (${op.contenedor_tipo || 'N/A'})`;
                   }
 
-                  const notas = op.notas_adicionales || op.notas_adionale || op.notas || op.observaciones || '';
+                  const notasCompletas = op.notas_adicionales || op.notes_adicionales || op.notas || op.observaciones || '';
+                  const notasCortas = notasCompletas.length > 25 
+                    ? notasCompletas.substring(0, 25) + '...' 
+                    : (notasCompletas || '-');
+
                   const estaSeleccionada = seleccionadas.includes(op.numero_fn);
 
                   return (
                     <tr key={op.numero_fn} className={`transition-colors ${estaSeleccionada ? 'bg-blue-50/60' : 'hover:bg-gray-50/80'}`}>
                       {modoSeleccion && (
-                        <td className="px-4 py-4 text-center whitespace-nowrap">
+                        <td className="p-3 md:p-4 text-center whitespace-nowrap align-middle">
                           <input 
                             type="checkbox"
                             checked={estaSeleccionada}
@@ -450,38 +640,38 @@ export default function FacturacionPage() {
                         </td>
                       )}
 
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="font-bold text-blue-600 text-sm">{op.numero_fn}</div>
+                      <td className="p-3 md:p-4 whitespace-nowrap align-middle">
+                        <div className="font-bold text-blue-600 text-sm">{highlightMatch(op.numero_fn, busqueda)}</div>
                         <div className="text-xs text-gray-500 font-medium mt-0.5">
                           Terminado: {fechaFormateada}
                         </div>
                       </td>
 
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="font-bold text-gray-900 text-sm">{op.cliente || '-'}</div>
+                      <td className="p-3 md:p-4 whitespace-nowrap align-middle">
+                        <div className="font-bold text-gray-900 text-sm">{highlightMatch(op.cliente || '-', busqueda)}</div>
                       </td>
 
-                      <td className="px-5 py-4 min-w-[260px]">
+                      <td className="p-3 md:p-4 min-w-[260px] align-middle">
                         {tipoOpLower === 'importacion' && (
                           <div className="space-y-1.5">
                             <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                               <span className="font-bold text-blue-700 uppercase">Origen:</span>
-                              <span className="font-semibold text-blue-700">{op.origen || 'Sin origen'}</span>
+                              <span className="font-semibold text-blue-700">{highlightMatch(op.origen || 'Sin origen', busqueda)}</span>
                             </div>
                             <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                               <span className="font-bold text-cyan-700 uppercase">Destino:</span>
-                              <span className="font-semibold text-cyan-700">{op.destino || 'Sin destino'}</span>
+                              <span className="font-semibold text-cyan-700">{highlightMatch(op.destino || 'Sin destino', busqueda)}</span>
                             </div>
                             {op.paradas && (
                               <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                                 <span className="font-bold text-amber-700 uppercase">Paradas:</span>
-                                <span className="font-semibold text-amber-700">{op.paradas}</span>
+                                <span className="font-semibold text-amber-700">{highlightMatch(op.paradas, busqueda)}</span>
                               </div>
                             )}
                             {op.lugar_devolucion && (
                               <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                                 <span className="font-bold text-purple-700 uppercase">Devolución:</span>
-                                <span className="font-semibold text-purple-700">{op.lugar_devolucion}</span>
+                                <span className="font-semibold text-purple-700">{highlightMatch(op.lugar_devolucion, busqueda)}</span>
                               </div>
                             )}
                           </div>
@@ -492,19 +682,19 @@ export default function FacturacionPage() {
                             {op.lugar_carga_vacio && (
                               <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                                 <span className="font-bold text-emerald-700 uppercase">Vacío:</span>
-                                <span className="font-semibold text-emerald-700">{op.lugar_carga_vacio}</span>
+                                <span className="font-semibold text-emerald-700">{highlightMatch(op.lugar_carga_vacio, busqueda)}</span>
                               </div>
                             )}
                             {op.lugar_carga_mercaderia && (
                               <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                                 <span className="font-bold text-amber-700 uppercase">Lleno:</span>
-                                <span className="font-semibold text-amber-700">{op.lugar_carga_mercaderia}</span>
+                                <span className="font-semibold text-amber-700">{highlightMatch(op.lugar_carga_mercaderia, busqueda)}</span>
                               </div>
                             )}
                             {op.lugar_entrega_lleno && (
                               <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                                 <span className="font-bold text-blue-700 uppercase">Entrega:</span>
-                                <span className="font-semibold text-blue-700">{op.lugar_entrega_lleno}</span>
+                                <span className="font-semibold text-blue-700">{highlightMatch(op.lugar_entrega_lleno, busqueda)}</span>
                               </div>
                             )}
                           </div>
@@ -514,11 +704,11 @@ export default function FacturacionPage() {
                           <div className="space-y-1.5">
                             <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                               <span className="font-bold text-indigo-700 uppercase">Desde:</span>
-                              <span className="font-semibold text-indigo-700">{op.lugar_carga || 'Sin origen'}</span>
+                              <span className="font-semibold text-indigo-700">{highlightMatch(op.lugar_carga || 'Sin origen', busqueda)}</span>
                             </div>
                             <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                               <span className="font-bold text-rose-700 uppercase">Hasta:</span>
-                              <span className="font-semibold text-rose-700">{op.lugar_entrega || 'Sin destino'}</span>
+                              <span className="font-semibold text-rose-700">{highlightMatch(op.lugar_entrega || 'Sin destino', busqueda)}</span>
                             </div>
                           </div>
                         )}
@@ -527,52 +717,58 @@ export default function FacturacionPage() {
                           <div className="space-y-1.5">
                             <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                               <span className="font-bold text-gray-700 uppercase">De:</span>
-                              <span className="font-semibold text-gray-700">{op.origen || op.lugar_carga || '-'}</span>
+                              <span className="font-semibold text-gray-700">{highlightMatch(op.origen || op.lugar_carga || '-', busqueda)}</span>
                             </div>
                             <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
                               <span className="font-bold text-gray-700 uppercase">A:</span>
-                              <span className="font-semibold text-gray-700">{op.destino || op.lugar_entrega || '-'}</span>
+                              <span className="font-semibold text-gray-700">{highlightMatch(op.destino || op.lugar_entrega || '-', busqueda)}</span>
                             </div>
                           </div>
                         )}
                       </td>
 
-                      <td className="px-5 py-4 whitespace-nowrap text-gray-800 font-medium text-sm">
+                      <td className="p-3 md:p-4 whitespace-nowrap text-gray-800 font-medium text-sm align-middle">
                         {fechaCargaFormateada}
                       </td>
 
-                      <td className="px-5 py-4 text-gray-800">
-                        <div className="font-medium text-sm">{detalleCarga}</div>
+                      <td className="p-3 md:p-4 text-gray-800 align-middle">
+                        <div className="font-medium text-sm">{highlightMatch(detalleCarga, busqueda)}</div>
                         {op.documento_aduanero && (
-                          <div className="text-xs text-gray-500 mt-1 font-medium">Doc: {op.documento_aduanero}</div>
+                          <div className="text-xs text-gray-500 mt-1 font-medium">Doc: {highlightMatch(op.documento_aduanero, busqueda)}</div>
                         )}
                       </td>
 
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <div className="font-bold text-gray-900 text-sm">{op.chofer || 'Sin chofer'}</div>
+                      <td className="p-3 md:p-4 whitespace-nowrap align-middle">
+                        <div className="font-bold text-gray-900 text-sm">{highlightMatch(op.chofer || 'Sin chofer', busqueda)}</div>
                         <div className="text-sm text-gray-600 mt-1 flex gap-3">
-                          {op.patente_camion && <span>Camión: <strong className="text-gray-900">{op.patente_camion}</strong></span>}
-                          {op.patente_semi && <span>Semi: <strong className="text-gray-900">{op.patente_semi}</strong></span>}
+                          {op.patente_camion && <span>Camión: <strong className="text-gray-900">{highlightMatch(op.patente_camion, busqueda)}</strong></span>}
+                          {op.patente_semi && <span>Semi: <strong className="text-gray-900">{highlightMatch(op.patente_semi, busqueda)}</strong></span>}
                         </div>
                       </td>
 
-                      <td className="px-5 py-4 text-sm text-gray-700 max-w-[220px]">
-                        {notas ? (
-                          <span title={notas} className="block line-clamp-3 font-medium">
-                            {notas}
-                          </span>
+                      {/* Cuadro de notas idéntico y desplegable al de la página principal */}
+                      <td className="p-3 md:p-4 relative break-words whitespace-normal align-middle">
+                        {notasCompletas ? (
+                          <details className="cursor-pointer group">
+                            <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
+                              {highlightMatch(notasCortas, busqueda)}
+                            </summary>
+                            <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
+                              {highlightMatch(notasCompletas, busqueda)}
+                            </div>
+                          </details>
                         ) : (
-                          <span className="text-gray-300">-</span>
+                          <span className="text-gray-400">-</span>
                         )}
                       </td>
 
-                      <td className="px-5 py-4 whitespace-nowrap">
+                      <td className="p-3 md:p-4 whitespace-nowrap align-middle">
                         <span className="px-3 py-1 inline-flex text-xs font-bold rounded-full bg-blue-100 text-blue-800 uppercase">
-                          {op.tipo_operacion || 'N/A'}
+                          {highlightMatch(op.tipo_operacion || 'N/A', busqueda)}
                         </span>
                       </td>
 
-                      <td className="px-5 py-4 whitespace-nowrap text-center">
+                      <td className="p-3 md:p-4 whitespace-nowrap text-center align-middle">
                         <div className="flex flex-col items-center gap-2">
                           <button
                             onClick={() => handleGenerarFactura(op.numero_fn)}
