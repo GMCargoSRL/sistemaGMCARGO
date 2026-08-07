@@ -487,7 +487,7 @@ export default function FacturacionPage() {
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Facturación Pendiente</h1>
-          <p className="text-xs md:text-sm text-gray-500 mt-0.5">Operaciones terminadas con estado de facturación en &quot;SI&quot;.</p>
+          <p className="text-xs md:text-sm text-gray-500 mt-0.5">Registro de operaciones completadas pendientes de facturar.</p>
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center w-full md:w-auto">
