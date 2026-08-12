@@ -5,7 +5,6 @@ import * as XLSX from 'xlsx'
 
 export default function Terminados() {
   const [fletes, setFletes] = useState<any[]>([])
-  // MODIFICACIÓN: Agregamos 'az' y 'za' a los tipos permitidos para el estado del orden
   const [orden, setOrden] = useState<'asc' | 'desc' | 'az' | 'za'>('desc')
   const [busqueda, setBusqueda] = useState('')
   
@@ -53,6 +52,13 @@ export default function Terminados() {
     return fechaStr;
   }
 
+  const formatearMonto = (monto: any) => {
+    if (monto === null || monto === undefined || monto === '') return '-';
+    const num = Number(monto);
+    if (isNaN(num)) return String(monto);
+    return `$ ${num.toLocaleString('es-AR')}`;
+  }
+
   const ejecutarExportacion = (datosAExportar: any[], nombreArchivo: string) => {
     if (!datosAExportar || datosAExportar.length === 0) {
       alert("No hay datos para exportar con los criterios seleccionados.")
@@ -67,6 +73,9 @@ export default function Terminados() {
         ? `${f.cantidad_bultos || ''} ${f.peso_bruto ? `(${f.peso_bruto} kg)` : ''}`.trim()
         : (f.contenedor_num ? `${f.contenedor_num} (${f.contenedor_tipo || ''})` : '');
 
+      const montoVal = f.monto ?? f.monto_flete ?? f.precio;
+      const facturaVal = f.factura ?? f.numero_factura ?? '';
+
       return {
         "Operación": f.numero_fn || '',
         "Cliente": f.cliente || '',
@@ -76,6 +85,8 @@ export default function Terminados() {
         "Camión": f.patente_camion || '',
         "Semi": f.patente_semi || '',
         "Bulto": infoBultoContenedor,
+        "Monto": montoVal ? formatearMonto(montoVal) : '',
+        "Factura": facturaVal,
         "Estado": f.estado || 'TERMINADO',
         "Comentarios": f.notas_adicionales || f.notes_adicionales || ''
       }
@@ -139,7 +150,7 @@ export default function Terminados() {
     doc.setTextColor(0, 0, 0)
     doc.setFont("helvetica", "bold")
     doc.setFontSize(20)
-    doc.text("ORDEN DE CARGA", 20, 40)
+    doc.text("ORDEN DE CARGA FINALIZADA", 20, 40)
     doc.setFontSize(12)
     doc.text(`${flete.numero_fn || ''}`, 160, 40)
     doc.text(`Emitido: ${new Date().toLocaleDateString()}`, 160, 45)
@@ -212,9 +223,22 @@ export default function Terminados() {
       `Patente Semi: ${flete.patente_semi || ' '}`
     ], 115, startY, 80, 70)
 
-    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || flete.notes_adicionales || 'Sin notas adicionales.'], 15, startY + Math.max(hGen, hEquipo) + 10, 180, 170)
+    // Datos de Facturación
+    const montoVal = flete.monto ?? flete.monto_flete ?? flete.precio;
+    const facturaVal = flete.factura ?? flete.numero_factura ?? flete.num_factura ?? '-';
+    const notasFacturacionVal = flete.notas_facturacion ?? flete.observaciones_facturacion ?? flete.notas_factura ?? '-';
 
-    doc.save(`Orden Carga ${flete.numero_fn}.pdf`)
+    const hFacturacion = drawBox("DATOS DE FACTURACIÓN", [
+      `N° Factura: ${facturaVal || '-'}`,
+      `Monto: ${montoVal ? formatearMonto(montoVal) : '-'}`,
+      `Notas Facturación: ${notasFacturacionVal || '-'}`
+    ], 115, startY + hEquipo + 5, 80, 70)
+
+    const yNotas = startY + Math.max(hGen, hEquipo + hFacturacion + 5) + 8;
+
+    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || flete.notes_adicionales || 'Sin notas adicionales.'], 15, yNotas, 180, 170)
+
+    doc.save(`Orden Carga Finalizada${flete.numero_fn}.pdf`)
   }
 
   const getEstadoStyle = (estado: string) => {
@@ -246,7 +270,6 @@ export default function Terminados() {
     }
   };
 
-  // MODIFICACIÓN: Ajustamos la función para que evalúe si ordenar por fecha o por numero_fn
   async function getFletesTerminados() {
     let query = supabase
       .from('fletes_nacionales')
@@ -341,14 +364,13 @@ export default function Terminados() {
             </span>
             <input 
               type="text" 
-              placeholder="Buscar operación, chofer, cliente..." 
+              placeholder="Buscar operación, chofer, cliente, factura..." 
               className="w-full pl-9 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 placeholder-gray-400" 
               onChange={(e) => setBusqueda(e.target.value)} 
             />
           </div>
           
           {/* Selector de ordenamiento */}
-          {/* MODIFICACIÓN: Agregamos las nuevas opciones (A-Z y Z-A) al select */}
           <select 
             value={orden} 
             onChange={(e) => setOrden(e.target.value as 'asc' | 'desc' | 'az' | 'za')}
@@ -418,17 +440,16 @@ export default function Terminados() {
       
       {/* Tabla */}
       <div className="min-w-full w-fit bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse table-auto min-w-[900px]">
+        <table className="w-full text-left border-collapse table-auto min-w-[1000px]">
           <thead>
             <tr className="bg-gray-50 text-xs md:text-sm text-gray-600 border-b border-gray-200">
               <th className="p-3 md:p-4 font-bold align-middle">Op.</th>
               <th className="p-3 md:p-4 font-bold align-middle">Cliente</th>
               <th className="p-3 md:p-4 font-bold align-middle">Tipo</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[100px]">Fecha y Hora</th>
-              <th className="p-3 md:p-4 font-bold align-middle">Chofer</th>
-              <th className="p-3 md:p-4 font-bold align-middle">Camión</th>
-              <th className="p-3 md:p-4 font-bold align-middle">Semi</th>
+              <th className="p-3 md:p-4 font-bold align-middle min-w-[140px]">Chofer / Equipo</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Bulto</th>
+              <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Monto / Factura</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Comentarios</th>
               <th className="p-3 md:p-4 font-bold align-middle">Estado</th>
               <th className="p-3 md:p-4 font-bold align-middle">Acciones</th>
@@ -457,6 +478,9 @@ export default function Terminados() {
                 ? textoComentarioCompleto.substring(0, 25) + '...' 
                 : (textoComentarioCompleto || '-');
 
+              const montoValor = f.monto ?? f.monto_flete ?? f.precio;
+              const facturaValor = f.factura ?? f.numero_factura ?? '-';
+
               return (
                 <tr key={f.numero_fn} className={`border-t border-gray-100 transition text-xs md:text-sm ${renglonColor}`}>
                   <td className="p-3 md:p-4 font-semibold text-gray-900 break-words whitespace-normal align-middle">
@@ -471,15 +495,25 @@ export default function Terminados() {
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
                     {fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}
                   </td>
+
+                  {/* CAMPO UNIFICADO: CHOFER / EQUIPO */}
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
-                    {resaltarTexto(f.chofer, queryBusqueda)}
+                    <div className="font-semibold text-gray-900">
+                      {resaltarTexto(f.chofer || '-', queryBusqueda)}
+                    </div>
+                    {(f.patente_camion || f.patente_semi) && (
+                      <div className="mt-1 text-[13px] text-gray-500 font-medium">
+                        {f.patente_camion && (
+                          <span>camion: {resaltarTexto(f.patente_camion, queryBusqueda)}</span>
+                        )}
+                        {f.patente_camion && f.patente_semi && <span>&nbsp;&nbsp;&nbsp;</span>}
+                        {f.patente_semi && (
+                          <span>semi: {resaltarTexto(f.patente_semi, queryBusqueda)}</span>
+                        )}
+                      </div>
+                    )}
                   </td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
-                    {resaltarTexto(f.patente_camion, queryBusqueda)}
-                  </td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
-                    {resaltarTexto(f.patente_semi, queryBusqueda)}
-                  </td>
+
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
                     <div>
                       {tipoOpLower === 'carga_suelta' ? (
@@ -507,6 +541,19 @@ export default function Terminados() {
                       </>
                     )}
                   </td>
+
+                  {/* CAMPO UNIFICADO: MONTO Y FACTURA */}
+                  <td className="p-3 md:p-4 text-gray-900 break-words whitespace-normal align-middle">
+                    <div className="font-semibold text-gray-900 whitespace-nowrap">
+                      {montoValor ? resaltarTexto(formatearMonto(montoValor), queryBusqueda) : <span className="text-gray-400 font-normal">-</span>}
+                    </div>
+                    {facturaValor && facturaValor !== '-' && (
+                      <div className="mt-1 text-xs text-gray-500 font-medium leading-tight">
+                        {resaltarTexto(String(facturaValor), queryBusqueda)}
+                      </div>
+                    )}
+                  </td>
+
                   <td className="p-3 md:p-4 relative break-words whitespace-normal align-middle">
                     {textoComentarioCompleto ? (
                       <details className="cursor-pointer group">
@@ -556,7 +603,7 @@ export default function Terminados() {
             })}
             {fletesFiltrados.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-12 text-center text-gray-400 text-sm">
+                <td colSpan={10} className="p-12 text-center text-gray-400 text-sm">
                   No hay operaciones terminadas que coincidan con la búsqueda.
                 </td>
               </tr>

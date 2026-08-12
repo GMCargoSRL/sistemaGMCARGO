@@ -43,7 +43,11 @@ export default function EditarFletePage() {
           ...flete,
           tram: flete.tram || 'NO',
           tipo_operacion: flete.tipo_operacion || 'importacion',
-          estado_facturacion: flete.estado_facturacion || 'FACTURADO' // <-- Inicialización del campo de facturación
+          estado_facturacion: flete.estado_facturacion || 'FACTURADO',
+          numero_factura: flete.numero_factura || '',
+          monto: flete.monto || '',
+          notas_facturacion: flete.notas_facturacion || '',
+          fecha_terminado: flete.fecha_terminado || null
         })
         setModificado(false)
       }
@@ -51,13 +55,12 @@ export default function EditarFletePage() {
     fetchData()
   }, [numero_fn])
 
-  // 1. Interceptar clics en cualquier enlace interno de la página (menús, operaciones, terminados, etc.)
+  // Interceptar clics en cualquier enlace interno de la página
   useEffect(() => {
     const handleAnchorClick = (e: MouseEvent) => {
       const target = (e.target as HTMLElement).closest('a')
       if (target && modificado && !modificacionExitosa) {
         const href = target.getAttribute('href')
-        // Si es un enlace interno que empieza con barra o ruta
         if (href && (href.startsWith('/') || href.startsWith('.'))) {
           e.preventDefault()
           setRutaPendiente(href)
@@ -70,7 +73,7 @@ export default function EditarFletePage() {
     return () => document.removeEventListener('click', handleAnchorClick, true)
   }, [modificado, modificacionExitosa])
 
-  // 2. Advertencia nativa de seguridad si intentan cerrar la pestaña por completo
+  // Advertencia nativa si intentan cerrar la pestaña
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (modificado && !modificacionExitosa) {
@@ -124,7 +127,13 @@ export default function EditarFletePage() {
     }
 
     const dataToSend = { ...form }
-    const dateFields = ['fecha_hora', 'fecha_carga_vacio', 'fecha_hora_carga', 'libre_hasta']
+    
+    // Eliminamos campos obsoletos o alias que no existen en la tabla de Supabase
+    delete dataToSend.factura
+    delete dataToSend.monto_flete
+    delete dataToSend.notes_adicionales
+
+    const dateFields = ['fecha_hora', 'fecha_carga_vacio', 'fecha_hora_carga', 'libre_hasta', 'fecha_terminado']
     dateFields.forEach(field => {
       if (dataToSend[field as keyof typeof dataToSend] === '') (dataToSend as any)[field] = null
     })
@@ -137,6 +146,13 @@ export default function EditarFletePage() {
       setModificacionExitosa(true)
       setModificado(false)
     }
+  }
+
+  const formatearMonto = (monto: any) => {
+    if (monto === null || monto === undefined || monto === '') return '-';
+    const num = Number(monto);
+    if (isNaN(num)) return String(monto);
+    return `$ ${num.toLocaleString('es-AR')}`;
   }
 
   const generarPDF = async (flete: any) => {
@@ -187,9 +203,10 @@ export default function EditarFletePage() {
     }
 
     const startY = 60
+    const valorTramPDF = String(flete.tram || 'NO').trim().toUpperCase();
 
     const tipoOperacionTexto = flete.tipo_operacion === 'importacion'
-      ? `IMPORTACION (TRAM: ${flete.tram?.toUpperCase() || 'NO'})`
+      ? `IMPORTACION (TRAM: ${valorTramPDF})`
       : (flete.tipo_operacion?.toUpperCase() || ' ');
 
     const datosGenerales = [
@@ -236,7 +253,19 @@ export default function EditarFletePage() {
       `Patente Semi: ${flete.patente_semi || ' '}`
     ], 115, startY, 80, 70)
 
-    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || flete.notes_adicionales || 'Sin notas adicionales.'], 15, startY + Math.max(hGen, hEquipo) + 10, 180, 170)
+    const montoVal = flete.monto;
+    const facturaVal = flete.numero_factura || '-';
+    const notasFacturacionVal = flete.notas_facturacion || '-';
+
+    const hFacturacion = drawBox("DATOS DE FACTURACIÓN", [
+      `N° Factura: ${facturaVal || '-'}`,
+      `Monto: ${montoVal ? formatearMonto(montoVal) : '-'}`,
+      `Notas Facturación: ${notasFacturacionVal || '-'}`
+    ], 115, startY + hEquipo + 5, 80, 70)
+
+    const yNotas = startY + Math.max(hGen, hEquipo + hFacturacion + 5) + 8;
+
+    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || 'Sin notas adicionales.'], 15, yNotas, 180, 170)
 
     doc.save(`Orden Carga ${flete.numero_fn}.pdf`)
   }
@@ -252,6 +281,7 @@ export default function EditarFletePage() {
       >
         <h2 className="text-2xl font-bold text-gray-800 border-b pb-4">Editar Operación: {numero_fn}</h2>
 
+        {/* SECCIÓN: DATOS DE OPERACIÓN */}
         <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Datos de Operación</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -275,7 +305,6 @@ export default function EditarFletePage() {
               <input type="text" placeholder="Nº Op. (VN-0001)" className="border p-2 flex-1 rounded uppercase bg-gray-100 text-gray-500 cursor-not-allowed" value={form.numero_fn || ''} readOnly />
             </div>
             
-            {/* Ajustado a md:col-span-2 para dejar espacio al campo de facturación */}
             <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className="border p-2 rounded md:col-span-2" value={form.cliente || ''} onChange={e => updateForm({ cliente: e.target.value })} />
             <datalist id="lista-clientes">
               {clientes
@@ -285,26 +314,26 @@ export default function EditarFletePage() {
               ))}
             </datalist>
 
-<input 
-  type="text" 
-  placeholder="Documento Aduanero" 
-  className="border p-2 rounded md:col-span-1" 
-  value={form.documento_aduanero || ""} 
-  onChange={e => setForm({...form, documento_aduanero: e.target.value})} 
-/>
+            <input 
+              type="text" 
+              placeholder="Documento Aduanero" 
+              className="border p-2 rounded md:col-span-1" 
+              value={form.documento_aduanero || ""} 
+              onChange={e => updateForm({ documento_aduanero: e.target.value })} 
+            />
           
-          {/* Bloque de Facturación perfectamente alineado y contenido */}
-          <div className="flex items-center justify-between gap-1 border px-3 py-2 rounded bg-white md:col-span-1">
-            <span className="text-[13px] text-gray-500 font-nowrap">¿Se Factura?</span>
-            <select className="outline-none text-sm bg-transparent cursor-pointer font-medium text-right" value={form.estado_facturacion} onChange={e => setForm({...form, estado_facturacion: e.target.value})}>
-              <option value="SI">SI</option>
-              <option value="NO">NO</option>
-              <option value="FACTURADO">FACTURADO</option>
-            </select>
+            <div className="flex items-center justify-between gap-1 border px-3 py-2 rounded bg-white md:col-span-1">
+              <span className="text-[13px] text-gray-500 font-nowrap">¿Se Factura?</span>
+              <select className="outline-none text-sm bg-transparent cursor-pointer font-medium text-right" value={form.estado_facturacion || 'FACTURADO'} onChange={e => updateForm({ estado_facturacion: e.target.value })}>
+                <option value="SI">SI</option>
+                <option value="NO">NO</option>
+                <option value="FACTURADO">FACTURADO</option>
+              </select>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
+        {/* SECCIÓN: DETALLES DE LA CARGA */}
         <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Detalles de la Carga</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -342,6 +371,7 @@ export default function EditarFletePage() {
           </div>
         </section>
 
+        {/* SECCIÓN: CHOFER Y UNIDAD */}
         <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Chofer y Unidad</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -361,9 +391,47 @@ export default function EditarFletePage() {
           </div>
         </section>
 
-        <textarea className="w-full border p-4 rounded-lg" placeholder="Notas adicionales..." value={form.notas_adicionales || ''} onChange={(e) => updateForm({ notas_adicionales: e.target.value })} />
+        {/* SECCIÓN: FACTURACIÓN Y MONTOS */}
+        <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="font-bold text-sky-700 mb-4 uppercase text-sm tracking-wider">Facturación y Montos</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <input 
+              type="text" 
+              placeholder="Número de Factura" 
+              className="border p-2.5 rounded bg-white" 
+              value={form.numero_factura || ''} 
+              onChange={e => updateForm({ numero_factura: e.target.value })} 
+            />
+            <input 
+              type="text" 
+              placeholder="Monto ($)" 
+              className="border p-2.5 rounded bg-white" 
+              value={form.monto || ''} 
+              onChange={e => updateForm({ monto: e.target.value })} 
+            />
+          </div>
+          <textarea 
+            className="w-full border p-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20" 
+            rows={3}
+            placeholder="Notas de facturación..." 
+            value={form.notas_facturacion || ''} 
+            onChange={(e) => updateForm({ notas_facturacion: e.target.value })} 
+          />
+        </section>
+
+        {/* SECCIÓN: NOTAS ADICIONALES */}
+        <section className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="font-bold text-sky-700 mb-3 uppercase text-sm tracking-wider">Instrucciones y Notas</h3>
+          <textarea 
+            className="w-full border p-4 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20" 
+            rows={4}
+            placeholder="Notas adicionales para la operación..." 
+            value={form.notas_adicionales || ''} 
+            onChange={(e) => updateForm({ notas_adicionales: e.target.value })} 
+          />
+        </section>
         
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 pt-2">
           <button type="submit" className="w-full bg-sky-600 text-white p-4 font-bold rounded-lg hover:bg-sky-700 transition shadow-lg">Guardar Cambios</button>
           <button type="button" onClick={handleCancelar} className="w-full bg-red-400 text-white p-3 font-bold rounded-lg hover:bg-red-500 transition">Cancelar</button>
         </div>

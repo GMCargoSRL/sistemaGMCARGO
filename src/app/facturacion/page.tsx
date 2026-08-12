@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
-// Funciones auxiliares para búsqueda aproximada y resaltado (igual que en principal)
+// Funciones auxiliares para búsqueda aproximada y resaltado
 function levenshtein(a: string, b: string): number {
   const an = a.length;
   const bn = b.length;
@@ -130,6 +130,28 @@ export default function FacturacionPage() {
   const [busqueda, setBusqueda] = useState('');
   const [criterioOrden, setCriterioOrden] = useState<'fecha_asc' | 'fecha_desc' | 'operacion_asc' | 'operacion_desc'>('fecha_asc');
 
+  // Estado para el desplegable de historial de montos
+  const [historialMontos, setHistorialMontos] = useState<{
+    numeroFn: string | null;
+    cargando: boolean;
+    lista: Array<{ numero_fn: string; monto: string; fecha: string }>;
+  }>({
+    numeroFn: null,
+    cargando: false,
+    lista: [],
+  });
+
+  // Estado para el modal de ingreso de número de factura
+  const [modalFacturar, setModalFacturar] = useState<{
+    abierto: boolean;
+    numeroFn: string;
+    numeroFactura: string;
+  }>({
+    abierto: false,
+    numeroFn: "",
+    numeroFactura: "",
+  });
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -158,26 +180,102 @@ export default function FacturacionPage() {
     obtenerFacturacionPendiente();
   }, []);
 
-  const handleGenerarFactura = async (numeroFn: string) => {
+  // Guardar monto localmente
+  const handleMontoLocalChange = (numeroFn: string, valor: string) => {
+    setOperaciones(prev =>
+      prev.map(op =>
+        op.numero_fn === numeroFn ? { ...op, monto: valor } : op
+      )
+    );
+  };
+
+  // Guardar monto (texto o número) en Supabase al perder el foco (onBlur)
+  const guardarMontoSupabase = async (numeroFn: string, valor: string) => {
+    const valTexto = valor.trim() === "" ? null : valor;
+    const { error } = await supabase
+      .from('fletes_nacionales')
+      .update({ monto: valTexto })
+      .eq('numero_fn', numeroFn);
+
+    if (error) {
+      console.error("Error al guardar monto:", error.message);
+    }
+  };
+
+  // Consultar historial de montos anteriores del cliente para el desplegable
+  const obtenerHistorialCliente = async (numeroFn: string, cliente: string) => {
+    if (!cliente) return;
+    setHistorialMontos({ numeroFn, cargando: true, lista: [] });
+
+    try {
+      const { data, error } = await supabase
+        .from('fletes_nacionales')
+        .select('numero_fn, monto, fecha_terminado, fecha_hora')
+        .eq('cliente', cliente)
+        .not('monto', 'is', null)
+        .neq('monto', '')
+        .neq('numero_fn', numeroFn)
+        .order('fecha_terminado', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error("Error al obtener historial de montos del cliente:", error.message);
+        setHistorialMontos({ numeroFn: null, cargando: false, lista: [] });
+        return;
+      }
+
+      if (data) {
+        const listaFormateada = data.map((item: any) => {
+          const fechaFin = item.fecha_terminado || item.fecha_hora;
+          const fechaStr = fechaFin 
+            ? new Date(fechaFin).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) 
+            : '-';
+
+          return {
+            numero_fn: item.numero_fn,
+            monto: item.monto,
+            fecha: fechaStr,
+          };
+        });
+        setHistorialMontos({ numeroFn, cargando: false, lista: listaFormateada });
+      }
+    } catch (err) {
+      console.error("Error inesperado al buscar historial:", err);
+      setHistorialMontos({ numeroFn: null, cargando: false, lista: [] });
+    }
+  };
+
+  // Confirmar la facturación guardando estado y número de factura
+  const confirmarFacturacion = async () => {
+    if (!modalFacturar.numeroFn) return;
+
+    const numFact = modalFacturar.numeroFactura.trim();
+
     const { error } = await supabase
       .from('fletes_nacionales')
       .update({ 
-        estado_facturacion: 'FACTURADO' 
+        estado_facturacion: 'FACTURADO',
+        numero_factura: numFact || null
       })
-      .eq('numero_fn', numeroFn);
+      .eq('numero_fn', modalFacturar.numeroFn);
 
     if (error) {
       setMensajeAlerta("Error al actualizar la factura: " + error.message);
       return;
     }
 
-    setMensajeAlerta(`${numeroFn} fue marcada como facturada, se envió automáticamente a "Terminados"`);
-    const nuevasOperaciones = operaciones.filter(op => op.numero_fn !== numeroFn);
+    const detalleFact = numFact ? ` (N° Factura: ${numFact})` : '';
+    setMensajeAlerta(`${modalFacturar.numeroFn} fue marcada como facturada${detalleFact}.`);
+
+    const nuevasOperaciones = operaciones.filter(op => op.numero_fn !== modalFacturar.numeroFn);
     setOperaciones(nuevasOperaciones);
-    setSeleccionadas(seleccionadas.filter(id => id !== numeroFn));
+    setSeleccionadas(seleccionadas.filter(id => id !== modalFacturar.numeroFn));
+
     if (nuevasOperaciones.length === 0) {
       setModoSeleccion(false);
     }
+
+    setModalFacturar({ abierto: false, numeroFn: "", numeroFactura: "" });
   };
 
   const toggleSeleccion = (numeroFn: string) => {
@@ -225,12 +323,13 @@ export default function FacturacionPage() {
 
     const cols = [
       { title: "ID Carga", x: 11, w: 18 },
-      { title: "Cliente", x: 30, w: 27 },
-      { title: "Ruta", x: 58, w: 41 },
-      { title: "F. Carga", x: 100, w: 22 },
-      { title: "Tipo Carga", x: 123, w: 28 },
-      { title: "Chofer / Unid.", x: 152, w: 23 },
-      { title: "Tipo Op.", x: 176, w: 23 },
+      { title: "Cliente", x: 30, w: 26 },
+      { title: "Notas", x: 57, w: 25 },
+      { title: "Monto", x: 83, w: 25 },
+      { title: "F. Carga", x: 109, w: 22 },
+      { title: "Tipo Carga", x: 132, w: 28 },
+      { title: "Chofer / Unid.", x: 161, w: 24 },
+      { title: "Tipo Op.", x: 186, w: 14 },
     ];
 
     cols.forEach(col => {
@@ -246,24 +345,15 @@ export default function FacturacionPage() {
     opsSeleccionadasData.forEach((op) => {
       const idCarga = String(op.numero_fn || '-');
       const cliente = String(op.cliente || '-');
-      
-      const tipoOpLower = String(op.tipo_operacion || '').trim().toLowerCase();
-      let rutaStr = '';
-      if (tipoOpLower === 'importacion') {
-        rutaStr = `De: ${op.origen || '-'} / A: ${op.destino || '-'}`;
-      } else if (tipoOpLower === 'exportacion') {
-        rutaStr = `Vacío: ${op.lugar_carga_vacio || '-'}\nEntrega: ${op.lugar_entrega_lleno || '-'}`;
-      } else if (tipoOpLower === 'carga_suelta') {
-        rutaStr = `De: ${op.lugar_carga || '-'} / A: ${op.lugar_entrega || '-'}`;
-      } else {
-        rutaStr = `De: ${op.origen || op.lugar_carga || '-'} / A: ${op.destino || op.lugar_entrega || '-'}`;
-      }
+      const notas = String(op.notas_facturacion || '-');
+      const montoVal = op.monto ? String(op.monto) : '-';
 
       const fechaCargaVal = op.fecha_hora || op.fecha_carga_vacio || op.fecha_hora_carga;
       const fechaCargaStr = fechaCargaVal 
         ? new Date(fechaCargaVal).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) 
         : '-';
 
+      const tipoOpLower = String(op.tipo_operacion || '').trim().toLowerCase();
       let tipoCargaStr = '';
       if (tipoOpLower === 'carga_suelta') {
         tipoCargaStr = `Suelta: ${op.cantidad_bultos || '0'} b.`;
@@ -276,16 +366,18 @@ export default function FacturacionPage() {
 
       const linesId = doc.splitTextToSize(idCarga, cols[0].w);
       const linesCliente = doc.splitTextToSize(cliente, cols[1].w);
-      const linesRuta = doc.splitTextToSize(rutaStr, cols[2].w);
-      const linesFecha = doc.splitTextToSize(fechaCargaStr, cols[3].w);
-      const linesTipoCarga = doc.splitTextToSize(tipoCargaStr, cols[4].w);
-      const linesChofer = doc.splitTextToSize(choferStr, cols[5].w);
-      const linesTipoOp = doc.splitTextToSize(tipoOpStr, cols[6].w);
+      const linesNotas = doc.splitTextToSize(notas, cols[2].w);
+      const linesMonto = doc.splitTextToSize(montoVal, cols[3].w);
+      const linesFecha = doc.splitTextToSize(fechaCargaStr, cols[4].w);
+      const linesTipoCarga = doc.splitTextToSize(tipoCargaStr, cols[5].w);
+      const linesChofer = doc.splitTextToSize(choferStr, cols[6].w);
+      const linesTipoOp = doc.splitTextToSize(tipoOpStr, cols[7].w);
 
       const maxLines = Math.max(
         linesId.length,
         linesCliente.length,
-        linesRuta.length,
+        linesNotas.length,
+        linesMonto.length,
         linesFecha.length,
         linesTipoCarga.length,
         linesChofer.length,
@@ -319,11 +411,12 @@ export default function FacturacionPage() {
 
       drawCenteredText(linesId, cols[0].x);
       drawCenteredText(linesCliente, cols[1].x);
-      drawCenteredText(linesRuta, cols[2].x);
-      drawCenteredText(linesFecha, cols[3].x);
-      drawCenteredText(linesTipoCarga, cols[4].x);
-      drawCenteredText(linesChofer, cols[5].x);
-      drawCenteredText(linesTipoOp, cols[6].x);
+      drawCenteredText(linesNotas, cols[2].x);
+      drawCenteredText(linesMonto, cols[3].x);
+      drawCenteredText(linesFecha, cols[4].x);
+      drawCenteredText(linesTipoCarga, cols[5].x);
+      drawCenteredText(linesChofer, cols[6].x);
+      drawCenteredText(linesTipoOp, cols[7].x);
 
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.3);
@@ -360,7 +453,7 @@ export default function FacturacionPage() {
     doc.setTextColor(0, 0, 0);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.text("ORDEN DE CARGA", 20, 40);
+    doc.text("ORDEN DE FACTURACIÓN", 20, 40);
     doc.setFontSize(12);
     doc.text(`${flete.numero_fn || ''}`, 160, 40);
     doc.text(`Emitido: ${new Date().toLocaleDateString()}`, 160, 45);
@@ -433,12 +526,11 @@ export default function FacturacionPage() {
       `Patente Semi: ${flete.patente_semi || ' '}`
     ], 115, startY, 80, 70);
 
-    drawBox("INSTRUCCIONES Y NOTAS", [flete.notas_adicionales || flete.notes_adicionales || 'Sin notas adicionales.'], 15, startY + Math.max(hGen, hEquipo) + 10, 180, 170);
+    drawBox("NOTAS DE FACTURACIÓN", [flete.notas_facturacion || 'Sin notas de facturación.'], 15, startY + Math.max(hGen, hEquipo) + 10, 180, 170);
 
-    doc.save(`Orden Carga ${flete.numero_fn}.pdf`);
+    doc.save(`Orden de Facturación ${flete.numero_fn}.pdf`);
   };
 
-  // Filtrado y ordenamiento similar a la página principal
   const queryBusqueda = busqueda.trim().toLowerCase();
   
   const operacionesConPuntaje = operaciones.map(op => {
@@ -483,7 +575,6 @@ export default function FacturacionPage() {
 
   return (
     <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
-      {/* Cabecera idéntica a la principal adaptada para facturación */}
       <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
         <div>
           <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Facturación Pendiente</h1>
@@ -577,11 +668,11 @@ export default function FacturacionPage() {
                 )}
                 <th className="p-3 md:p-4 font-bold align-middle">ID Carga</th>
                 <th className="p-3 md:p-4 font-bold align-middle">Cliente</th>
-                <th className="p-3 md:p-4 font-bold align-middle min-w-[260px]">Ruta</th>
+                <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Notas</th>
+                <th className="p-3 md:p-4 font-bold align-middle min-w-[170px]">Monto</th>
                 <th className="p-3 md:p-4 font-bold align-middle">Fecha de Carga</th>
                 <th className="p-3 md:p-4 font-bold align-middle">Tipo de Carga</th>
                 <th className="p-3 md:p-4 font-bold align-middle">Chofer y Unidad</th>
-                <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Notas</th>
                 <th className="p-3 md:p-4 font-bold align-middle">Tipo Op.</th>
                 <th className="p-3 md:p-4 font-bold align-middle text-center">Acción</th>
               </tr>
@@ -601,7 +692,7 @@ export default function FacturacionPage() {
                 </tr>
               ) : (
                 operacionesOrdenadasFinal.map((op) => {
-                  const fechaFin = op.fecha_terminado || op.updated_at || op.fecha_hora;
+                  const fechaFin = op.fecha_terminado || op.fecha_hora;
                   const fechaFormateada = fechaFin 
                     ? new Date(fechaFin).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }) 
                     : '-';
@@ -620,7 +711,7 @@ export default function FacturacionPage() {
                     detalleCarga = `Contenedor: ${op.contenedor_num || 'S/N'} (${op.contenedor_tipo || 'N/A'})`;
                   }
 
-                  const notasCompletas = op.notas_adicionales || op.notes_adicionales || op.notas || op.observaciones || '';
+                  const notasCompletas = op.notas_facturacion || '';
                   const notasCortas = notasCompletas.length > 25 
                     ? notasCompletas.substring(0, 25) + '...' 
                     : (notasCompletas || '-');
@@ -651,78 +742,100 @@ export default function FacturacionPage() {
                         <div className="font-bold text-gray-900 text-sm">{highlightMatch(op.cliente || '-', busqueda)}</div>
                       </td>
 
-                      <td className="p-3 md:p-4 min-w-[260px] align-middle">
-                        {tipoOpLower === 'importacion' && (
-                          <div className="space-y-1.5">
-                            <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                              <span className="font-bold text-blue-700 uppercase">Origen:</span>
-                              <span className="font-semibold text-blue-700">{highlightMatch(op.origen || 'Sin origen', busqueda)}</span>
+                      <td className="p-3 md:p-4 relative break-words whitespace-normal align-middle">
+                        {notasCompletas ? (
+                          <details className="cursor-pointer group">
+                            <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
+                              {highlightMatch(notasCortas, busqueda)}
+                            </summary>
+                            <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
+                              {highlightMatch(notasCompletas, busqueda)}
                             </div>
-                            <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                              <span className="font-bold text-cyan-700 uppercase">Destino:</span>
-                              <span className="font-semibold text-cyan-700">{highlightMatch(op.destino || 'Sin destino', busqueda)}</span>
-                            </div>
-                            {op.paradas && (
-                              <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                                <span className="font-bold text-amber-700 uppercase">Paradas:</span>
-                                <span className="font-semibold text-amber-700">{highlightMatch(op.paradas, busqueda)}</span>
-                              </div>
-                            )}
-                            {op.lugar_devolucion && (
-                              <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                                <span className="font-bold text-purple-700 uppercase">Devolución:</span>
-                                <span className="font-semibold text-purple-700">{highlightMatch(op.lugar_devolucion, busqueda)}</span>
-                              </div>
-                            )}
-                          </div>
+                          </details>
+                        ) : (
+                          <span className="text-gray-400">-</span>
                         )}
+                      </td>
 
-                        {tipoOpLower === 'exportacion' && (
-                          <div className="space-y-1.5">
-                            {op.lugar_carga_vacio && (
-                              <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                                <span className="font-bold text-emerald-700 uppercase">Vacío:</span>
-                                <span className="font-semibold text-emerald-700">{highlightMatch(op.lugar_carga_vacio, busqueda)}</span>
+                      {/* Columna Editable de Monto con Desplegable de Historial */}
+                      <td className="p-3 md:p-4 min-w-[170px] relative align-middle">
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            placeholder="$ $ $"
+                            value={op.monto ?? ''}
+                            onChange={(e) => handleMontoLocalChange(op.numero_fn, e.target.value)}
+                            onFocus={() => obtenerHistorialCliente(op.numero_fn, op.cliente)}
+                            onBlur={(e) => {
+                              guardarMontoSupabase(op.numero_fn, e.target.value);
+                              setTimeout(() => {
+                                setHistorialMontos(prev => prev.numeroFn === op.numero_fn ? { ...prev, numeroFn: null } : prev);
+                              }, 200);
+                            }}
+                            className="w-full px-3 py-1.5 pr-7 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                          />
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => {
+                              if (historialMontos.numeroFn === op.numero_fn) {
+                                setHistorialMontos({ numeroFn: null, cargando: false, lista: [] });
+                              } else {
+                                obtenerHistorialCliente(op.numero_fn, op.cliente);
+                              }
+                            }}
+                            className="absolute right-2 text-gray-400 hover:text-gray-600 text-xs focus:outline-none cursor-pointer"
+                            title="Ver historial de montos"
+                          >
+                            ▼
+                          </button>
+                        </div>
+
+                        {/* Desplegable de Historial */}
+                        {historialMontos.numeroFn === op.numero_fn && (
+                          <div 
+                            className="absolute left-3 right-3 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 max-h-52 overflow-y-auto text-xs"
+                            onMouseDown={(e) => e.preventDefault()}
+                          >
+                            <div className="p-2 bg-gray-50 font-bold text-gray-500 border-b border-gray-100 flex justify-between items-center sticky top-0">
+                              <span>Historial del Cliente</span>
+                              <button 
+                                type="button"
+                                onClick={() => setHistorialMontos({ numeroFn: null, cargando: false, lista: [] })}
+                                className="text-gray-400 hover:text-gray-600 font-bold cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+
+                            {historialMontos.cargando ? (
+                              <div className="p-3 text-center text-gray-400">Cargando historial...</div>
+                            ) : historialMontos.lista.length === 0 ? (
+                              <div className="p-3 text-center text-gray-400">Sin montos anteriores</div>
+                            ) : (
+                              <div className="divide-y divide-gray-100">
+                                {historialMontos.lista.map((item, idx) => (
+                                  <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => {
+                                      handleMontoLocalChange(op.numero_fn, item.monto);
+                                      guardarMontoSupabase(op.numero_fn, item.monto);
+                                      setHistorialMontos({ numeroFn: null, cargando: false, lista: [] });
+                                    }}
+                                    className="w-full text-left p-2 hover:bg-blue-50 transition flex flex-col gap-0.5 group cursor-pointer"
+                                  >
+                                    <div className="flex justify-between items-center font-semibold text-gray-800 group-hover:text-blue-600">
+                                      <span>OP: {item.numero_fn}</span>
+                                      <span className="font-bold text-emerald-600">${item.monto}</span>
+                                    </div>
+                                    <div className="text-[10px] text-gray-400">
+                                      Terminado: {item.fecha}
+                                    </div>
+                                  </button>
+                                ))}
                               </div>
                             )}
-                            {op.lugar_carga_mercaderia && (
-                              <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                                <span className="font-bold text-amber-700 uppercase">Lleno:</span>
-                                <span className="font-semibold text-amber-700">{highlightMatch(op.lugar_carga_mercaderia, busqueda)}</span>
-                              </div>
-                            )}
-                            {op.lugar_entrega_lleno && (
-                              <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                                <span className="font-bold text-blue-700 uppercase">Entrega:</span>
-                                <span className="font-semibold text-blue-700">{highlightMatch(op.lugar_entrega_lleno, busqueda)}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {tipoOpLower === 'carga_suelta' && (
-                          <div className="space-y-1.5">
-                            <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                              <span className="font-bold text-indigo-700 uppercase">Desde:</span>
-                              <span className="font-semibold text-indigo-700">{highlightMatch(op.lugar_carga || 'Sin origen', busqueda)}</span>
-                            </div>
-                            <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                              <span className="font-bold text-rose-700 uppercase">Hasta:</span>
-                              <span className="font-semibold text-rose-700">{highlightMatch(op.lugar_entrega || 'Sin destino', busqueda)}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {!['importacion', 'exportacion', 'carga_suelta'].includes(tipoOpLower) && (
-                          <div className="space-y-1.5">
-                            <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                              <span className="font-bold text-gray-700 uppercase">De:</span>
-                              <span className="font-semibold text-gray-700">{highlightMatch(op.origen || op.lugar_carga || '-', busqueda)}</span>
-                            </div>
-                            <div className="grid grid-cols-[85px_1fr] gap-1 items-start text-xs">
-                              <span className="font-bold text-gray-700 uppercase">A:</span>
-                              <span className="font-semibold text-gray-700">{highlightMatch(op.destino || op.lugar_entrega || '-', busqueda)}</span>
-                            </div>
                           </div>
                         )}
                       </td>
@@ -746,22 +859,6 @@ export default function FacturacionPage() {
                         </div>
                       </td>
 
-                      {/* Cuadro de notas idéntico y desplegable al de la página principal */}
-                      <td className="p-3 md:p-4 relative break-words whitespace-normal align-middle">
-                        {notasCompletas ? (
-                          <details className="cursor-pointer group">
-                            <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
-                              {highlightMatch(notasCortas, busqueda)}
-                            </summary>
-                            <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
-                              {highlightMatch(notasCompletas, busqueda)}
-                            </div>
-                          </details>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-
                       <td className="p-3 md:p-4 whitespace-nowrap align-middle">
                         <span className="px-3 py-1 inline-flex text-xs font-bold rounded-full bg-blue-100 text-blue-800 uppercase">
                           {highlightMatch(op.tipo_operacion || 'N/A', busqueda)}
@@ -771,7 +868,11 @@ export default function FacturacionPage() {
                       <td className="p-3 md:p-4 whitespace-nowrap text-center align-middle">
                         <div className="flex flex-col items-center gap-2">
                           <button
-                            onClick={() => handleGenerarFactura(op.numero_fn)}
+                            onClick={() => setModalFacturar({ 
+                              abierto: true, 
+                              numeroFn: op.numero_fn, 
+                              numeroFactura: op.numero_factura || op.factura || "" 
+                            })}
                             className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-xl shadow-sm transition-colors text-xs font-bold cursor-pointer w-full"
                           >
                             FACTURADO
@@ -793,6 +894,56 @@ export default function FacturacionPage() {
         </div>
       </div>
 
+      {/* Modal para Ingreso de Número de Comprobante / Factura */}
+      {modalFacturar.abierto && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-100 transform transition-all animate-in fade-in zoom-in duration-200">
+            <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">
+              🧾
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-1">
+              Marcar como Facturado
+            </h3>
+            <p className="text-xs text-gray-500 text-center mb-4">
+              Operación: <span className="font-semibold text-gray-800">{modalFacturar.numeroFn}</span>
+            </p>
+
+            <div className="mb-5 text-left">
+              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                Número de Comprobante / Factura (Opcional):
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: FC-A 0001-00001234"
+                value={modalFacturar.numeroFactura}
+                onChange={(e) => setModalFacturar({ ...modalFacturar, numeroFactura: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') confirmarFacturacion();
+                }}
+                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-800"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setModalFacturar({ abierto: false, numeroFn: "", numeroFactura: "" })}
+                className="w-1/2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 px-4 rounded-xl transition text-sm cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarFacturacion}
+                className="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md transition text-sm cursor-pointer"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Alerta */}
       {mensajeAlerta && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center border border-gray-100 transform transition-all animate-in fade-in zoom-in duration-200">

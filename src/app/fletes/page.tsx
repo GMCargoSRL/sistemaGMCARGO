@@ -10,6 +10,7 @@ const ESTADO_INICIAL = {
   paradas: '', destino: '', patente_camion: '', patente_semi: '',
   lugar_devolucion: '', libre_hasta: '',
   notas_adicionales: '',
+  notas_facturacion: '',
   lugar_carga_vacio: '', fecha_carga_vacio: '',
   lugar_carga_mercaderia: '', lugar_entrega_lleno: '',
   lugar_carga: '', fecha_hora_carga: '', documento_aduanero: '', 
@@ -415,6 +416,8 @@ export default function FletesPage() {
       </section>
 
       <textarea className="w-full border p-4 rounded-lg" placeholder="Notas adicionales..." value={form.notas_adicionales} onChange={(e) => setForm({...form, notas_adicionales: e.target.value})} />
+      
+      <textarea className="w-full border p-4 rounded-lg" placeholder="Notas de facturación..." value={form.notas_facturacion} onChange={(e) => setForm({...form, notas_facturacion: e.target.value})} />
         
       <div className="flex flex-col gap-3">
         <button type="submit" className="w-full bg-sky-600 text-white p-4 font-bold rounded-lg hover:bg-sky-700 transition shadow-lg">Guardar Operación</button>

@@ -25,22 +25,18 @@ function levenshtein(a: string, b: string): number {
   return matrix[bn][an];
 }
 
-// NUEVA FUNCIÓN: Asigna un puntaje de relevancia a la coincidencia
 function obtenerPuntajeSimilitud(valor: any, query: string): number {
   if (!valor) return 0;
   const strVal = String(valor).toLowerCase();
   const q = query.toLowerCase().trim();
   if (!q) return 1;
 
-  // 1. Coincidencia exacta (El mejor puntaje)
   if (strVal === q) return 1000;
 
-  // 2. Coincidencia como prefijo o subcadena exacta (Ideal para número de contenedores)
   let baseScore = 0;
   if (strVal.startsWith(q)) baseScore = 500;
   else if (strVal.includes(q)) baseScore = 200;
 
-  // 3. Coincidencia laxa por palabras (Tokens)
   const palabrasQuery = q.split(/\s+/);
   const tokensVal = strVal.split(/[\s-_]+/);
 
@@ -53,18 +49,16 @@ function obtenerPuntajeSimilitud(valor: any, query: string): number {
     
     tokensVal.forEach(token => {
       if (token === pq) {
-        bestTokenScore = Math.max(bestTokenScore, 100); // Palabra exacta
+        bestTokenScore = Math.max(bestTokenScore, 100);
       } else if (token.startsWith(pq)) {
-        bestTokenScore = Math.max(bestTokenScore, 80);  // Empieza con la palabra
+        bestTokenScore = Math.max(bestTokenScore, 80);
       } else if (token.includes(pq) || pq.includes(token)) {
-        bestTokenScore = Math.max(bestTokenScore, 50);  // Contiene la palabra
+        bestTokenScore = Math.max(bestTokenScore, 50);
       } else {
-        // Tolerancia a errores de tipeo (Levenshtein)
         const maxDist = pq.length <= 4 ? 1 : 2;
         if (Math.abs(token.length - pq.length) <= maxDist) {
           const dist = levenshtein(token, pq);
           if (dist <= maxDist) {
-            // Mientras menor la distancia, mayor el puntaje (dist=1 -> 20pts, dist=2 -> 10pts)
             bestTokenScore = Math.max(bestTokenScore, 30 - (dist * 10));
           }
         }
@@ -77,7 +71,6 @@ function obtenerPuntajeSimilitud(valor: any, query: string): number {
     }
   });
 
-  // Retornamos el puntaje más alto entre la búsqueda exacta y la suma de coincidencias laxas
   if (coincidenciaLaxa || baseScore > 0) {
     return Math.max(baseScore, tokenScoreTotal);
   }
@@ -398,7 +391,6 @@ export default function Dashboard() {
 
   const queryBusqueda = busqueda.trim().toLowerCase();
   
-  // 1. Mapeamos los fletes calculando su puntaje de búsqueda
   const fletesConPuntaje = fletes.map(f => {
     if (!queryBusqueda) return { ...f, _searchScore: 1 };
     
@@ -411,7 +403,6 @@ export default function Dashboard() {
     return { ...f, _searchScore: maxScore };
   });
 
-  // 2. Filtramos solo los que superan un puntaje mayor a 0 (si hay búsqueda)
   const fletesFiltrados = queryBusqueda 
     ? fletesConPuntaje.filter(f => f._searchScore > 0)
     : fletesConPuntaje;
@@ -428,17 +419,13 @@ export default function Dashboard() {
     return isNaN(time) ? 0 : time;
   };
 
-  // 3. Ordenamos: Si hay búsqueda priorizamos el puntaje, si no, los filtros del menú
   const fletesOrdenadosFinal = [...fletesFiltrados].sort((a, b) => {
-    
-    // ORDEN PRIORITARIO POR RELEVANCIA DE BÚSQUEDA
     if (queryBusqueda) {
       if (a._searchScore !== b._searchScore) {
-        return b._searchScore - a._searchScore; // Mayor a menor puntaje
+        return b._searchScore - a._searchScore;
       }
     }
 
-    // ORDEN SECUNDARIO (El que eligió el usuario en el select)
     if (criterioOrden === 'operacion_asc' || criterioOrden === 'operacion_desc') {
       const opA = String(a.numero_fn || '').replace(/\s+/g, '').toLowerCase();
       const opB = String(b.numero_fn || '').replace(/\s+/g, '').toLowerCase();
@@ -557,9 +544,7 @@ export default function Dashboard() {
               <th className="p-3 md:p-4 font-bold align-middle">Cliente</th>
               <th className="p-3 md:p-4 font-bold align-middle">Tipo</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[100px]">Fecha y Hora</th>
-              <th className="p-3 md:p-4 font-bold align-middle">Chofer</th>
-              <th className="p-3 md:p-4 font-bold align-middle">Camión</th>
-              <th className="p-3 md:p-4 font-bold align-middle">Semi</th>
+              <th className="p-3 md:p-4 font-bold align-middle">Chofer / Equipo</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Bulto</th>
               <th className="p-3 md:p-4 font-bold align-middle min-w-[120px]">Comentarios</th>
               <th className="p-3 md:p-4 font-bold align-middle">Estado</th>
@@ -595,9 +580,17 @@ export default function Dashboard() {
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.cliente || '-', busqueda)}</td>
                   <td className="p-3 md:p-4 font-bold uppercase text-gray-500 text-[10px] md:text-xs break-words whitespace-normal align-middle">{highlightMatch(tipoMostrar, busqueda)}</td>
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.chofer, busqueda)}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.patente_camion, busqueda)}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.patente_semi, busqueda)}</td>
+                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                    <div className="font-medium">{highlightMatch(f.chofer || '-', busqueda)}</div>
+                    <div className="text-xs text-gray-400 font-normal leading-tight mt-1">
+                      {highlightMatch(
+                        f.patente_semi && f.patente_semi !== '-'
+                          ? `Camión: ${f.patente_camion || '-'} Semi: ${f.patente_semi}`
+                          : `Camión: ${f.patente_camion || '-'}`,
+                        busqueda
+                      )}
+                    </div>
+                  </td>
                   <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
                     {f.tipo_operacion === 'carga_suelta' ? (
                       <div>{highlightMatch(`${f.cantidad_bultos || ''} ${f.peso_bruto ? `(${f.peso_bruto})` : ''}`.trim(), busqueda)}</div>
@@ -648,7 +641,6 @@ export default function Dashboard() {
 
                         await supabase.from('fletes_nacionales').update(datosActualizacion).eq('numero_fn', f.numero_fn);
                         
-                        // Lógica automática de facturación
                         if (nuevoEstado === 'TERMINADO') {
                           const facturarStr = String(f.facturar || '').trim().toUpperCase();
                           if (facturarStr === 'SI' || f.facturar === true) {
@@ -688,7 +680,7 @@ export default function Dashboard() {
             })}
             {fletesOrdenadosFinal.length === 0 && (
               <tr>
-                <td colSpan={11} className="p-12 text-center text-gray-400 text-sm">
+                <td colSpan={9} className="p-12 text-center text-gray-400 text-sm">
                   No hay operaciones activas que coincidan con la búsqueda.
                 </td>
               </tr>
