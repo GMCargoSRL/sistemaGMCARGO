@@ -8,7 +8,7 @@ const withPWA = withPWAInit({
   reloadOnOnline: true,
   disable: process.env.NODE_ENV === "development",
   workboxOptions: {
-    disableDevLogs: true,
+    disableDevLogs: false,
   },
 });
 
