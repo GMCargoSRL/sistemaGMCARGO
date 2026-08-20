@@ -391,6 +391,18 @@ export default function EditarFletePage() {
           </div>
         </section>
 
+        {/* SECCIÓN: NOTAS ADICIONALES */}
+        <section className="bg-white dark:bg-[#111c38] p-6 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 transition-colors duration-200">
+          <h3 className="font-bold text-sky-700 dark:text-sky-400 mb-3 uppercase text-sm tracking-wider">Instrucciones y Notas</h3>
+          <textarea 
+            className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 p-4 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20" 
+            rows={4}
+            placeholder="Notas adicionales para la operación..." 
+            value={form.notas_adicionales || ''} 
+            onChange={(e) => updateForm({ notas_adicionales: e.target.value })} 
+          />
+        </section>
+
         {/* SECCIÓN: FACTURACIÓN Y MONTOS */}
         <section className="bg-white dark:bg-[#111c38] p-6 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 transition-colors duration-200">
           <h3 className="font-bold text-sky-700 dark:text-sky-400 mb-4 uppercase text-sm tracking-wider">Facturación y Montos</h3>
@@ -416,18 +428,6 @@ export default function EditarFletePage() {
             placeholder="Notas de facturación..." 
             value={form.notas_facturacion || ''} 
             onChange={(e) => updateForm({ notas_facturacion: e.target.value })} 
-          />
-        </section>
-
-        {/* SECCIÓN: NOTAS ADICIONALES */}
-        <section className="bg-white dark:bg-[#111c38] p-6 rounded-lg shadow-sm border border-gray-200 dark:border-slate-800 transition-colors duration-200">
-          <h3 className="font-bold text-sky-700 dark:text-sky-400 mb-3 uppercase text-sm tracking-wider">Instrucciones y Notas</h3>
-          <textarea 
-            className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 p-4 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20" 
-            rows={4}
-            placeholder="Notas adicionales para la operación..." 
-            value={form.notas_adicionales || ''} 
-            onChange={(e) => updateForm({ notas_adicionales: e.target.value })} 
           />
         </section>
         
