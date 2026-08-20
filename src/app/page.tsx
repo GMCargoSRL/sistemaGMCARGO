@@ -93,7 +93,7 @@ function highlightMatch(text: any, query: string): React.ReactNode {
     return (
       <>
         {before}
-        <mark className="bg-yellow-200 text-gray-900 rounded px-0.5">{match}</mark>
+        <mark className="bg-yellow-200 dark:bg-amber-500/40 text-gray-900 dark:text-amber-200 rounded px-0.5">{match}</mark>
         {highlightMatch(after, q)}
       </>
     );
@@ -115,13 +115,13 @@ function highlightMatch(text: any, query: string): React.ReactNode {
     });
 
     if (isMatched && part.trim().length > 0) {
-      return <mark key={i} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>;
+      return <mark key={i} className="bg-yellow-200 dark:bg-amber-500/40 text-gray-900 dark:text-amber-200 rounded px-0.5">{part}</mark>;
     }
     return part;
   });
 }
 
-export default function Dashboard() {
+export default function Page() {
   const [fletes, setFletes] = useState<any[]>([])
   const [criterioOrden, setCriterioOrden] = useState<'fecha_asc' | 'fecha_desc' | 'operacion_asc' | 'operacion_desc'>('fecha_asc')
   const [busqueda, setBusqueda] = useState('')
@@ -338,10 +338,13 @@ export default function Dashboard() {
       case null: 
       case undefined: 
       case '': 
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'EN CURSO': return 'bg-red-100 text-red-800 border-red-200';
-      case 'TERMINADO': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700/50';
+      case 'EN CURSO': 
+        return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700/50';
+      case 'TERMINADO': 
+        return 'bg-green-100 text-green-800 border-green-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:border-emerald-700/50';
+      default: 
+        return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700/50';
     }
   };
 
@@ -351,13 +354,13 @@ export default function Dashboard() {
       case null: 
       case undefined: 
       case '': 
-        return 'bg-blue-50/60 hover:bg-blue-100/80';
+        return 'bg-blue-50/60 hover:bg-blue-100/80 dark:bg-blue-950/20 dark:hover:bg-blue-900/30';
       case 'EN CURSO': 
-        return 'bg-red-50/60 hover:bg-red-100/80';
+        return 'bg-red-50/60 hover:bg-red-100/80 dark:bg-red-950/20 dark:hover:bg-red-900/30';
       case 'TERMINADO': 
-        return 'bg-green-50/60 hover:bg-green-100/80';
+        return 'bg-green-50/60 hover:bg-green-100/80 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/30';
       default: 
-        return 'bg-blue-50/60 hover:bg-blue-100/80';
+        return 'bg-blue-50/60 hover:bg-blue-100/80 dark:bg-blue-950/20 dark:hover:bg-blue-900/30';
     }
   };
 
@@ -450,37 +453,41 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
-      <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
+    <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50 dark:bg-[#0b1329] transition-colors duration-200">
+      {/* Header y Filtros */}
+      <div className="bg-white dark:bg-[#111c38] p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw] transition-colors duration-200">
         <div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Operaciones en Curso</h1>
-          <p className="text-xs md:text-sm text-gray-500 mt-0.5">Listado de fletes activos en preparación o tránsito.</p>
+          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Operaciones en Curso</h1>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 mt-0.5">Listado de fletes activos en preparación o tránsito.</p>
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center w-full md:w-auto">
+          {/* Campo Búsqueda */}
           <div className="relative w-full md:w-72">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-sm">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 dark:text-slate-500 text-sm">
               🔍
             </span>
             <input 
               type="text" 
               placeholder="Buscar operación, chofer, cliente..." 
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 placeholder-gray-400" 
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50/80 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500" 
               onChange={(e) => setBusqueda(e.target.value)} 
             />
           </div>
           
+          {/* Selector de Orden */}
           <select 
             value={criterioOrden} 
             onChange={(e) => setCriterioOrden(e.target.value as any)}
-            className="bg-white border border-gray-200 text-gray-700 px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-full sm:w-auto shrink-0"
+            className="bg-white dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700/80 text-gray-700 dark:text-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 dark:hover:border-slate-600 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-full sm:w-auto shrink-0"
           >
-            <option value="fecha_asc">📅 Más Próximos</option>
-            <option value="fecha_desc">📅 Más Lejanos</option>
-            <option value="operacion_asc">🔤 Operación: A - Z</option>
-            <option value="operacion_desc">🔤 Operación: Z - A</option>
+            <option value="fecha_asc" className="dark:bg-[#111c38]">📅 Más Próximos</option>
+            <option value="fecha_desc" className="dark:bg-[#111c38]">📅 Más Lejanos</option>
+            <option value="operacion_asc" className="dark:bg-[#111c38]">🔤 Operación: A - Z</option>
+            <option value="operacion_desc" className="dark:bg-[#111c38]">🔤 Operación: Z - A</option>
           </select>
 
+          {/* Menú Exportar */}
           <div className="relative w-full sm:w-auto" ref={menuRef}>
             <button 
               onClick={() => {
@@ -493,8 +500,8 @@ export default function Dashboard() {
             </button>
 
             {mostrarMenuExportar && (
-              <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white border border-gray-100 rounded-2xl shadow-2xl z-20 p-4 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
-                <p className="font-bold text-gray-800 mb-3 pb-2 border-b border-gray-100 flex items-center gap-2">
+              <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-[#111c38] border border-gray-100 dark:border-slate-800 rounded-2xl shadow-2xl z-20 p-4 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                <p className="font-bold text-gray-800 dark:text-slate-100 mb-3 pb-2 border-b border-gray-100 dark:border-slate-800 flex items-center gap-2">
                   <span>📥</span> Opciones de Exportación
                 </p>
                 
@@ -502,14 +509,14 @@ export default function Dashboard() {
                   <div className="flex flex-col gap-2">
                     <button 
                       onClick={exportarVisibles}
-                      className="text-left w-full px-3.5 py-2.5 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl text-gray-700 font-medium transition flex items-center justify-between"
+                      className="text-left w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-400 rounded-xl text-gray-700 dark:text-slate-200 font-medium transition flex items-center justify-between"
                     >
                       <span>Exportar visibles</span>
-                      <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold">{fletesOrdenadosFinal.length}</span>
+                      <span className="text-xs bg-gray-200 dark:bg-slate-800 text-gray-600 dark:text-slate-300 px-2 py-0.5 rounded-full font-bold">{fletesOrdenadosFinal.length}</span>
                     </button>
                     <button 
                       onClick={() => setModoExportar('rango')}
-                      className="text-left w-full px-3.5 py-2.5 bg-gray-50 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl text-gray-700 font-medium transition flex items-center gap-2"
+                      className="text-left w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900/50 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-700 dark:hover:text-emerald-400 rounded-xl text-gray-700 dark:text-slate-200 font-medium transition flex items-center gap-2"
                     >
                       <span>📅 Por rango de fechas</span>
                     </button>
@@ -518,15 +525,15 @@ export default function Dashboard() {
 
                 {modoExportar === 'rango' && (
                   <div className="flex flex-col gap-2.5 mt-1">
-                    <label className="text-xs font-semibold text-gray-600">Desde:</label>
-                    <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="border border-gray-200 p-2 rounded-xl text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                    <label className="text-xs font-semibold text-gray-600 dark:text-slate-400">Desde:</label>
+                    <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="border border-gray-200 dark:border-slate-700 p-2 rounded-xl text-xs bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
                     
-                    <label className="text-xs font-semibold text-gray-600">Hasta:</label>
-                    <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="border border-gray-200 p-2 rounded-xl text-xs bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                    <label className="text-xs font-semibold text-gray-600 dark:text-slate-400">Hasta:</label>
+                    <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="border border-gray-200 dark:border-slate-700 p-2 rounded-xl text-xs bg-gray-50 dark:bg-slate-900 text-gray-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
                     
                     <div className="flex gap-2 mt-2">
                       <button onClick={exportarPorRangoFechas} className="bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition w-full shadow-sm">Descargar</button>
-                      <button onClick={() => setModoExportar('ninguno')} className="bg-gray-100 text-gray-600 px-3 py-2 rounded-xl text-xs font-bold hover:bg-gray-200 transition">Volver</button>
+                      <button onClick={() => setModoExportar('ninguno')} className="bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 px-3 py-2 rounded-xl text-xs font-bold hover:bg-gray-200 dark:hover:bg-slate-700 transition">Volver</button>
                     </div>
                   </div>
                 )}
@@ -536,10 +543,11 @@ export default function Dashboard() {
         </div>
       </div>
       
-      <div className="min-w-full w-fit bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+      {/* Tabla de Operaciones */}
+      <div className="min-w-full w-fit bg-white dark:bg-[#111c38] border border-gray-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-200">
         <table className="w-full text-left border-collapse table-auto min-w-[900px]">
           <thead>
-            <tr className="bg-gray-50 text-xs md:text-sm text-gray-600 border-b border-gray-200">
+            <tr className="bg-gray-50 dark:bg-[#0b1329]/60 text-xs md:text-sm text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <th className="p-3 md:p-4 font-bold align-middle">Op.</th>
               <th className="p-3 md:p-4 font-bold align-middle">Cliente</th>
               <th className="p-3 md:p-4 font-bold align-middle">Tipo</th>
@@ -575,14 +583,14 @@ export default function Dashboard() {
                 : (textoComentarioCompleto || '-');
 
               return (
-                <tr key={f.numero_fn} className={`border-t border-gray-100 transition text-xs md:text-sm ${renglonColor}`}>
-                  <td className="p-3 md:p-4 font-semibold text-gray-900 break-words whitespace-normal align-middle">{highlightMatch(f.numero_fn, busqueda)}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{highlightMatch(f.cliente || '-', busqueda)}</td>
-                  <td className="p-3 md:p-4 font-bold uppercase text-gray-500 text-[10px] md:text-xs break-words whitespace-normal align-middle">{highlightMatch(tipoMostrar, busqueda)}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
-                    <div className="font-medium">{highlightMatch(f.chofer || '-', busqueda)}</div>
-                    <div className="text-xs text-gray-400 font-normal leading-tight mt-1">
+                <tr key={f.numero_fn} className={`border-t border-gray-100 dark:border-slate-800/60 transition text-xs md:text-sm ${renglonColor}`}>
+                  <td className="p-3 md:p-4 font-semibold text-gray-900 dark:text-slate-100 break-words whitespace-normal align-middle">{highlightMatch(f.numero_fn, busqueda)}</td>
+                  <td className="p-3 md:p-4 text-gray-700 dark:text-slate-300 break-words whitespace-normal align-middle">{highlightMatch(f.cliente || '-', busqueda)}</td>
+                  <td className="p-3 md:p-4 font-bold uppercase text-gray-500 dark:text-slate-400 text-[10px] md:text-xs break-words whitespace-normal align-middle">{highlightMatch(tipoMostrar, busqueda)}</td>
+                  <td className="p-3 md:p-4 text-gray-700 dark:text-slate-300 break-words whitespace-normal align-middle">{fechaMostrar ? new Date(fechaMostrar).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '-'}</td>
+                  <td className="p-3 md:p-4 text-gray-700 dark:text-slate-300 break-words whitespace-normal align-middle">
+                    <div className="font-medium text-gray-900 dark:text-slate-200">{highlightMatch(f.chofer || '-', busqueda)}</div>
+                    <div className="text-xs text-gray-400 dark:text-slate-400 font-normal leading-tight mt-1">
                       {highlightMatch(
                         f.patente_semi && f.patente_semi !== '-'
                           ? `Camión: ${f.patente_camion || '-'} Semi: ${f.patente_semi}`
@@ -591,7 +599,7 @@ export default function Dashboard() {
                       )}
                     </div>
                   </td>
-                  <td className="p-3 md:p-4 text-gray-700 break-words whitespace-normal align-middle">
+                  <td className="p-3 md:p-4 text-gray-700 dark:text-slate-300 break-words whitespace-normal align-middle">
                     {f.tipo_operacion === 'carga_suelta' ? (
                       <div>{highlightMatch(`${f.cantidad_bultos || ''} ${f.peso_bruto ? `(${f.peso_bruto})` : ''}`.trim(), busqueda)}</div>
                     ) : (
@@ -600,11 +608,11 @@ export default function Dashboard() {
                         {!llevaInfoDevolucion && (
                           <>
                             {faltanCamposDevolucion ? (
-                              <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 text-[9px] font-medium leading-tight">
+                              <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 text-[9px] font-medium leading-tight">
                                 <span>⚠️ Falta dev. / libre</span>
                               </div>
                             ) : (
-                              <div className="mt-0.5 text-[10px] text-gray-500 leading-tight break-words whitespace-normal">
+                              <div className="mt-0.5 text-[10px] text-gray-500 dark:text-slate-400 leading-tight break-words whitespace-normal">
                                 {highlightMatch(`Dev: ${f.lugar_devolucion} | Libre: ${formatearFechaCortas(f.libre_hasta)}`, busqueda)}
                               </div>
                             )}
@@ -616,15 +624,15 @@ export default function Dashboard() {
                   <td className="p-3 md:p-4 relative break-words whitespace-normal align-middle">
                     {textoComentarioCompleto ? (
                       <details className="cursor-pointer group">
-                        <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
+                        <summary className="list-none text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium block select-none break-words">
                           {highlightMatch(textoComentarioCorto, busqueda)}
                         </summary>
-                        <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
+                        <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white dark:bg-[#111c38] border dark:border-slate-700 rounded-lg shadow-xl w-64 text-sm text-gray-800 dark:text-slate-200 break-words whitespace-pre-wrap">
                           {highlightMatch(textoComentarioCompleto, busqueda)}
                         </div>
                       </details>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-slate-600">-</span>
                     )}
                   </td>
                   <td className="p-3 md:p-4 align-middle">
@@ -663,16 +671,16 @@ export default function Dashboard() {
                         localStorage.setItem('fletes_cache', JSON.stringify(nuevosFletes));
                       }}
                     >
-                      <option value="EN PREPARACIÓN">EN PREPARACIÓN</option>
-                      <option value="EN CURSO">EN CURSO</option>
-                      <option value="TERMINADO">TERMINADO</option>
+                      <option value="EN PREPARACIÓN" className="dark:bg-[#111c38]">EN PREPARACIÓN</option>
+                      <option value="EN CURSO" className="dark:bg-[#111c38]">EN CURSO</option>
+                      <option value="TERMINADO" className="dark:bg-[#111c38]">TERMINADO</option>
                     </select>
                   </td>
                   <td className="p-3 md:p-4 text-left align-middle">
                     <div className="flex flex-col items-start gap-1">
-                      <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 text-[11px] font-bold hover:underline">EDITAR</button>
-                      <button onClick={() => generarPDF(f)} className="text-green-600 text-[11px] font-bold hover:underline">PDF</button>
-                      <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 text-[11px] font-bold hover:underline">ELIMINAR</button>
+                      <button onClick={() => window.location.href = `/fletes/${f.numero_fn}/editar`} className="text-blue-600 dark:text-sky-400 text-[11px] font-bold hover:underline">EDITAR</button>
+                      <button onClick={() => generarPDF(f)} className="text-green-600 dark:text-emerald-400 text-[11px] font-bold hover:underline">PDF</button>
+                      <button onClick={() => setOpAEliminar(f.numero_fn)} className="text-red-500 dark:text-red-400 text-[11px] font-bold hover:underline">ELIMINAR</button>
                     </div>
                   </td>
                 </tr>
@@ -680,7 +688,7 @@ export default function Dashboard() {
             })}
             {fletesOrdenadosFinal.length === 0 && (
               <tr>
-                <td colSpan={9} className="p-12 text-center text-gray-400 text-sm">
+                <td colSpan={9} className="p-12 text-center text-gray-400 dark:text-slate-500 text-sm">
                   No hay operaciones activas que coincidan con la búsqueda.
                 </td>
               </tr>
@@ -689,26 +697,27 @@ export default function Dashboard() {
         </table>
       </div>
 
+      {/* Modal de Confirmación de Eliminación */}
       {opAEliminar && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-100 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-red-600 text-2xl font-bold">⚠️</span>
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm animate-fade-in p-4">
+          <div className="bg-white dark:bg-[#111c38] rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-100 dark:border-slate-800 text-center">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-950/50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-red-600 dark:text-red-400 text-2xl font-bold">⚠️</span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">¿Confirmar eliminación?</h3>
-            <p className="text-sm text-gray-500 mb-6">
-              ¿Estás seguro de eliminar la operación <span className="font-bold text-gray-800">{opAEliminar}</span>? Esta acción no se puede deshacer.
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">¿Confirmar eliminación?</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">
+              ¿Estás seguro de eliminar la operación <span className="font-bold text-gray-800 dark:text-slate-200">{opAEliminar}</span>? Esta acción no se puede deshacer.
             </p>
             <div className="flex gap-3 justify-center">
               <button 
                 onClick={() => setOpAEliminar(null)} 
-                className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-sm font-semibold rounded-xl"
+                className="px-4 py-2 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700 transition text-sm font-semibold rounded-xl"
               >
                 Cancelar
               </button>
               <button 
                 onClick={confirmarEliminarFlete} 
-                className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 transition text-sm font-semibold rounded-xl shadow-sm"
+                className="px-4 py-2 bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-800 transition text-sm font-semibold rounded-xl shadow-sm"
               >
                 Sí, eliminar
               </button>

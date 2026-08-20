@@ -9,8 +9,36 @@ import { Toaster } from 'sonner'
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false)
   const [fechaHoraActual, setFechaHoraActual] = useState<string>('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
-  // Efecto para actualizar el reloj cada segundo en el encabezado global
+  // 🌙 Cargar la preferencia de tema guardada al iniciar
+  useEffect(() => {
+    const temaGuardado = localStorage.getItem('theme')
+    const prefiereOscuro = window.matchMedia('(prefers-color-scheme: dark)').matches
+
+    if (temaGuardado === 'dark' || (!temaGuardado && prefiereOscuro)) {
+      setIsDarkMode(true)
+      document.documentElement.classList.add('dark')
+    } else {
+      setIsDarkMode(false)
+      document.documentElement.classList.remove('dark')
+    }
+  }, [])
+
+  // 🔄 Alternar entre modo claro y oscuro
+  const toggleDarkMode = () => {
+    if (isDarkMode) {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+      setIsDarkMode(false)
+    } else {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+      setIsDarkMode(true)
+    }
+  }
+
+  // Efecto para actualizar el reloj cada segundo
   useEffect(() => {
     const actualizarReloj = () => {
       const ahora = new Date()
@@ -35,14 +63,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="icon" type="image/png" href="/icon-192x192.png" />
       </head>
-      <body className="min-h-screen bg-gray-50 relative overflow-x-auto m-0 p-0">
+      <body className="min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative overflow-x-auto m-0 p-0 transition-colors duration-300">
         
-        {/* 🖼️ Marca de Agua Repetida en Patrón (Mosaico) */}
-        <div className="fixed inset-0 pointer-events-none z-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-12 p-8 opacity-5 overflow-hidden">
+        {/* 🖼️ Marca de Agua Repetida (Se adapta la opacidad según el modo) */}
+        <div className="fixed inset-0 pointer-events-none z-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-12 p-8 opacity-5 dark:opacity-10 dark:invert overflow-hidden">
           {Array.from({ length: 20 }).map((_, i) => (
             <div key={i} className="flex items-center justify-center p-4">
               <Image 
-                src="/icon-192x192.png" // Cambia la ruta por la imagen de tu logo
+                src="/icon-192x192.png"
                 alt="Logo GM Cargo"
                 width={120}
                 height={120}
@@ -53,7 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           ))}
         </div>
 
-        {/* Overlay oscuro de fondo cuando la barra está abierta */}
+        {/* Overlay oscuro cuando la barra está abierta */}
         {isSidebarOpen && (
           <div 
             className="fixed inset-0 bg-black/50 z-40"
@@ -78,26 +106,48 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/terminados" className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Terminados</Link>
               <Link href="/facturacion" className="block p-3 hover:bg-yellow-600 rounded text-orange-300 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Facturación</Link>
             </nav>
+
+            {/* 🌙 Botón de cambio de modo en el menú lateral */}
+            <div className="p-4 border-t border-slate-800 bg-slate-950/50">
+              <button
+                onClick={toggleDarkMode}
+                className="w-full flex items-center justify-between p-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors cursor-pointer"
+              >
+                <span>Modo de Interfaz</span>
+                <span className="text-lg">{isDarkMode ? '🌙 Oscuro' : '☀️ Claro'}</span>
+              </button>
+            </div>
           </div>
         </aside>
 
         {/* Encabezado Fijo */}
-        <header className="bg-white/90 backdrop-blur-xs shadow-sm p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-30 w-full">
+        <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs shadow-sm p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-30 w-full border-b border-gray-100 dark:border-slate-800 transition-colors">
           <div className="flex items-center">
             <button 
-              className="p-2 text-slate-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+              className="p-2 text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
               onClick={() => setSidebarOpen(!isSidebarOpen)}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <span className="ml-4 font-semibold text-slate-700">Sistema de Gestión</span>
+            <span className="ml-4 font-semibold text-slate-700 dark:text-slate-200">Sistema de Gestión</span>
           </div>
 
-          {/* Reloj en tiempo real */}
-          <div className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 shadow-xs capitalize ml-8">
-            {fechaHoraActual}
+          <div className="flex items-center gap-3">
+            {/* Botón rápido en el Header */}
+            <button
+              onClick={toggleDarkMode}
+              className="p-2 text-slate-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              title={isDarkMode ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
+
+            {/* Reloj en tiempo real */}
+            <div className="text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 shadow-xs capitalize">
+              {fechaHoraActual}
+            </div>
           </div>
         </header>
 
@@ -108,7 +158,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
         </div>
 
-        {/* Componente que renderiza los avisos flotantes */}
         <Toaster richColors position="top-right" />
       </body>
     </html>

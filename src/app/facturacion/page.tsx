@@ -93,7 +93,7 @@ function highlightMatch(text: any, query: string): React.ReactNode {
     return (
       <>
         {before}
-        <mark className="bg-yellow-200 text-gray-900 rounded px-0.5">{match}</mark>
+        <mark className="bg-yellow-300 dark:bg-amber-500/40 text-gray-900 dark:text-amber-200 rounded px-0.5 font-semibold">{match}</mark>
         {highlightMatch(after, q)}
       </>
     );
@@ -115,7 +115,7 @@ function highlightMatch(text: any, query: string): React.ReactNode {
     });
 
     if (isMatched && part.trim().length > 0) {
-      return <mark key={i} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>;
+      return <mark key={i} className="bg-yellow-300 dark:bg-amber-500/40 text-gray-900 dark:text-amber-200 rounded px-0.5 font-semibold">{part}</mark>;
     }
     return part;
   });
@@ -574,22 +574,22 @@ export default function FacturacionPage() {
   const colSpanTotal = modoSeleccion ? 10 : 9;
 
   return (
-    <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50">
-      <div className="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw]">
+    <div className="p-4 md:p-8 min-w-full w-fit min-h-screen bg-gray-50/50 dark:bg-[#0b1329] transition-colors duration-200">
+      <div className="bg-white dark:bg-[#111c38] p-4 md:p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky left-0 max-w-[100vw] transition-colors duration-200">
         <div>
-          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight">Facturación Pendiente</h1>
-          <p className="text-xs md:text-sm text-gray-500 mt-0.5">Registro de operaciones completadas pendientes de facturar.</p>
+          <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 dark:text-white tracking-tight">Facturación Pendiente</h1>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-slate-400 mt-0.5">Registro de operaciones completadas pendientes de facturar.</p>
         </div>
         
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-center w-full md:w-auto">
           <div className="relative w-full md:w-72">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-sm">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 dark:text-slate-500 text-sm">
               🔍
             </span>
             <input 
               type="text" 
               placeholder="Buscar operación, chofer, cliente..." 
-              className="w-full pl-9 pr-4 py-2.5 bg-gray-50/80 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 placeholder-gray-400" 
+              className="w-full pl-9 pr-4 py-2.5 bg-gray-50/80 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700/80 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500" 
               onChange={(e) => setBusqueda(e.target.value)} 
             />
           </div>
@@ -597,12 +597,12 @@ export default function FacturacionPage() {
           <select 
             value={criterioOrden} 
             onChange={(e) => setCriterioOrden(e.target.value as any)}
-            className="bg-white border border-gray-200 text-gray-700 px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-full sm:w-auto shrink-0"
+            className="bg-white dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700/80 text-gray-700 dark:text-slate-200 px-3.5 py-2.5 rounded-xl text-sm font-semibold hover:border-gray-300 dark:hover:border-slate-600 transition shadow-sm cursor-pointer outline-none focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 w-full sm:w-auto shrink-0"
           >
-            <option value="fecha_asc">📅 Más Próximos</option>
-            <option value="fecha_desc">📅 Más Lejanos</option>
-            <option value="operacion_asc">🔤 Operación: A - Z</option>
-            <option value="operacion_desc">🔤 Operación: Z - A</option>
+            <option value="fecha_asc" className="dark:bg-[#111c38]">📅 Más Próximos</option>
+            <option value="fecha_desc" className="dark:bg-[#111c38]">📅 Más Lejanos</option>
+            <option value="operacion_asc" className="dark:bg-[#111c38]">🔤 Operación: A - Z</option>
+            <option value="operacion_desc" className="dark:bg-[#111c38]">🔤 Operación: Z - A</option>
           </select>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -611,7 +611,7 @@ export default function FacturacionPage() {
                 {!modoSeleccion ? (
                   <button
                     onClick={() => setModoSeleccion(true)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full sm:w-auto"
+                    className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full sm:w-auto"
                   >
                     📄 Imprimir Lista
                   </button>
@@ -621,8 +621,8 @@ export default function FacturacionPage() {
                       onClick={generarPDFListaSeleccionadas}
                       className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full ${
                         seleccionadas.length > 0 
-                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white' 
-                          : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                          ? 'bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white' 
+                          : 'bg-gray-200 dark:bg-slate-800 text-gray-500 dark:text-slate-400 hover:bg-gray-300 dark:hover:bg-slate-700'
                       }`}
                     >
                       📄 PDF ({seleccionadas.length})
@@ -632,7 +632,7 @@ export default function FacturacionPage() {
                         setModoSeleccion(false);
                         setSeleccionadas([]);
                       }}
-                      className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer shadow-sm"
+                      className="bg-gray-200 dark:bg-slate-800 hover:bg-gray-300 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 px-3 py-2.5 rounded-xl text-sm font-semibold transition cursor-pointer shadow-sm"
                       title="Cancelar selección"
                     >
                       ✕
@@ -643,7 +643,7 @@ export default function FacturacionPage() {
             )}
             <button 
               onClick={obtenerFacturacionPendiente}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full sm:w-auto"
+              className="bg-gray-100 dark:bg-slate-800/80 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm w-full sm:w-auto"
             >
               🔄
             </button>
@@ -651,10 +651,10 @@ export default function FacturacionPage() {
         </div>
       </div>
 
-      <div className="min-w-full w-fit bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="min-w-full w-fit bg-white dark:bg-[#111c38] border border-gray-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-200">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse table-auto min-w-[900px]">
-            <thead className="bg-gray-50 text-xs md:text-sm text-gray-600 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-[#0b1329]/60 text-xs md:text-sm text-gray-600 dark:text-slate-400 border-b border-gray-200 dark:border-slate-800">
               <tr>
                 {modoSeleccion && (
                   <th className="p-3 md:p-4 text-center w-12 align-middle">
@@ -662,7 +662,7 @@ export default function FacturacionPage() {
                       type="checkbox"
                       checked={operaciones.length > 0 && seleccionadas.length === operaciones.length}
                       onChange={toggleSeleccionarTodas}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-slate-700 focus:ring-blue-500 cursor-pointer"
                     />
                   </th>
                 )}
@@ -677,16 +677,16 @@ export default function FacturacionPage() {
                 <th className="p-3 md:p-4 font-bold align-middle text-center">Acción</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-100 text-xs md:text-sm">
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800/60 text-xs md:text-sm">
               {cargando ? (
                 <tr>
-                  <td colSpan={colSpanTotal} className="p-12 text-center text-gray-400 text-base">
+                  <td colSpan={colSpanTotal} className="p-12 text-center text-gray-400 dark:text-slate-500 text-base">
                     Cargando operaciones pendientes...
                   </td>
                 </tr>
               ) : operacionesOrdenadasFinal.length === 0 ? (
                 <tr>
-                  <td colSpan={colSpanTotal} className="p-12 text-center text-gray-500 text-base">
+                  <td colSpan={colSpanTotal} className="p-12 text-center text-gray-500 dark:text-slate-400 text-base">
                     No hay operaciones pendientes de facturar que coincidan con la búsqueda. ¡Todo al día! 🎉
                   </td>
                 </tr>
@@ -719,41 +719,41 @@ export default function FacturacionPage() {
                   const estaSeleccionada = seleccionadas.includes(op.numero_fn);
 
                   return (
-                    <tr key={op.numero_fn} className={`transition-colors ${estaSeleccionada ? 'bg-blue-50/60' : 'hover:bg-gray-50/80'}`}>
+                    <tr key={op.numero_fn} className={`transition-colors ${estaSeleccionada ? 'bg-blue-50/60 dark:bg-sky-950/30' : 'hover:bg-gray-50/80 dark:hover:bg-slate-800/40'}`}>
                       {modoSeleccion && (
                         <td className="p-3 md:p-4 text-center whitespace-nowrap align-middle">
                           <input 
                             type="checkbox"
                             checked={estaSeleccionada}
                             onChange={() => toggleSeleccion(op.numero_fn)}
-                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            className="w-4 h-4 text-blue-600 rounded border-gray-300 dark:border-slate-700 focus:ring-blue-500 cursor-pointer"
                           />
                         </td>
                       )}
 
                       <td className="p-3 md:p-4 whitespace-nowrap align-middle">
-                        <div className="font-bold text-blue-600 text-sm">{highlightMatch(op.numero_fn, busqueda)}</div>
-                        <div className="text-xs text-gray-500 font-medium mt-0.5">
+                        <div className="font-bold text-blue-600 dark:text-sky-400 text-sm">{highlightMatch(op.numero_fn, busqueda)}</div>
+                        <div className="text-xs text-gray-500 dark:text-slate-400 font-medium mt-0.5">
                           Terminado: {fechaFormateada}
                         </div>
                       </td>
 
                       <td className="p-3 md:p-4 whitespace-nowrap align-middle">
-                        <div className="font-bold text-gray-900 text-sm">{highlightMatch(op.cliente || '-', busqueda)}</div>
+                        <div className="font-bold text-gray-900 dark:text-slate-100 text-sm">{highlightMatch(op.cliente || '-', busqueda)}</div>
                       </td>
 
                       <td className="p-3 md:p-4 relative break-words whitespace-normal align-middle">
                         {notasCompletas ? (
                           <details className="cursor-pointer group">
-                            <summary className="list-none text-gray-700 hover:text-blue-600 font-medium block select-none break-words">
+                            <summary className="list-none text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-sky-400 font-medium block select-none break-words">
                               {highlightMatch(notasCortas, busqueda)}
                             </summary>
-                            <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white border rounded-lg shadow-xl w-64 text-sm text-gray-800 break-words whitespace-pre-wrap">
+                            <div className="absolute right-0 md:left-0 z-20 p-4 mt-2 bg-white dark:bg-[#111c38] border dark:border-slate-700 rounded-lg shadow-xl w-64 text-sm text-gray-800 dark:text-slate-200 break-words whitespace-pre-wrap">
                               {highlightMatch(notasCompletas, busqueda)}
                             </div>
                           </details>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-400 dark:text-slate-600">-</span>
                         )}
                       </td>
 
@@ -772,7 +772,7 @@ export default function FacturacionPage() {
                                 setHistorialMontos(prev => prev.numeroFn === op.numero_fn ? { ...prev, numeroFn: null } : prev);
                               }, 200);
                             }}
-                            className="w-full px-3 py-1.5 pr-7 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            className="w-full px-3 py-1.5 pr-7 bg-gray-50 dark:bg-slate-900/80 border border-gray-200 dark:border-slate-700/80 rounded-lg text-sm font-bold text-gray-800 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-gray-400 dark:placeholder-slate-600"
                           />
                           <button
                             type="button"
@@ -784,7 +784,7 @@ export default function FacturacionPage() {
                                 obtenerHistorialCliente(op.numero_fn, op.cliente);
                               }
                             }}
-                            className="absolute right-2 text-gray-400 hover:text-gray-600 text-xs focus:outline-none cursor-pointer"
+                            className="absolute right-2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xs focus:outline-none cursor-pointer"
                             title="Ver historial de montos"
                           >
                             ▼
@@ -794,26 +794,26 @@ export default function FacturacionPage() {
                         {/* Desplegable de Historial */}
                         {historialMontos.numeroFn === op.numero_fn && (
                           <div 
-                            className="absolute left-3 right-3 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-30 max-h-52 overflow-y-auto text-xs"
+                            className="absolute left-3 right-3 top-full mt-1 bg-white dark:bg-[#111c38] border border-gray-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-52 overflow-y-auto text-xs"
                             onMouseDown={(e) => e.preventDefault()}
                           >
-                            <div className="p-2 bg-gray-50 font-bold text-gray-500 border-b border-gray-100 flex justify-between items-center sticky top-0">
+                            <div className="p-2 bg-gray-50 dark:bg-slate-900/80 font-bold text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center sticky top-0">
                               <span>Historial del Cliente</span>
                               <button 
                                 type="button"
                                 onClick={() => setHistorialMontos({ numeroFn: null, cargando: false, lista: [] })}
-                                className="text-gray-400 hover:text-gray-600 font-bold cursor-pointer"
+                                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 font-bold cursor-pointer"
                               >
                                 ✕
                               </button>
                             </div>
 
                             {historialMontos.cargando ? (
-                              <div className="p-3 text-center text-gray-400">Cargando historial...</div>
+                              <div className="p-3 text-center text-gray-400 dark:text-slate-500">Cargando historial...</div>
                             ) : historialMontos.lista.length === 0 ? (
-                              <div className="p-3 text-center text-gray-400">Sin montos anteriores</div>
+                              <div className="p-3 text-center text-gray-400 dark:text-slate-500">Sin montos anteriores</div>
                             ) : (
-                              <div className="divide-y divide-gray-100">
+                              <div className="divide-y divide-gray-100 dark:divide-slate-800/60">
                                 {historialMontos.lista.map((item, idx) => (
                                   <button
                                     key={idx}
@@ -823,13 +823,13 @@ export default function FacturacionPage() {
                                       guardarMontoSupabase(op.numero_fn, item.monto);
                                       setHistorialMontos({ numeroFn: null, cargando: false, lista: [] });
                                     }}
-                                    className="w-full text-left p-2 hover:bg-blue-50 transition flex flex-col gap-0.5 group cursor-pointer"
+                                    className="w-full text-left p-2 hover:bg-blue-50 dark:hover:bg-slate-800/60 transition flex flex-col gap-0.5 group cursor-pointer"
                                   >
-                                    <div className="flex justify-between items-center font-semibold text-gray-800 group-hover:text-blue-600">
+                                    <div className="flex justify-between items-center font-semibold text-gray-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-sky-400">
                                       <span>OP: {item.numero_fn}</span>
-                                      <span className="font-bold text-emerald-600">${item.monto}</span>
+                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">${item.monto}</span>
                                     </div>
-                                    <div className="text-[10px] text-gray-400">
+                                    <div className="text-[10px] text-gray-400 dark:text-slate-500">
                                       Terminado: {item.fecha}
                                     </div>
                                   </button>
@@ -840,27 +840,27 @@ export default function FacturacionPage() {
                         )}
                       </td>
 
-                      <td className="p-3 md:p-4 whitespace-nowrap text-gray-800 font-medium text-sm align-middle">
+                      <td className="p-3 md:p-4 whitespace-nowrap text-gray-800 dark:text-slate-200 font-medium text-sm align-middle">
                         {fechaCargaFormateada}
                       </td>
 
-                      <td className="p-3 md:p-4 text-gray-800 align-middle">
+                      <td className="p-3 md:p-4 text-gray-800 dark:text-slate-200 align-middle">
                         <div className="font-medium text-sm">{highlightMatch(detalleCarga, busqueda)}</div>
                         {op.documento_aduanero && (
-                          <div className="text-xs text-gray-500 mt-1 font-medium">Doc: {highlightMatch(op.documento_aduanero, busqueda)}</div>
+                          <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 font-medium">Doc: {highlightMatch(op.documento_aduanero, busqueda)}</div>
                         )}
                       </td>
 
                       <td className="p-3 md:p-4 whitespace-nowrap align-middle">
-                        <div className="font-bold text-gray-900 text-sm">{highlightMatch(op.chofer || 'Sin chofer', busqueda)}</div>
-                        <div className="text-sm text-gray-600 mt-1 flex gap-3">
-                          {op.patente_camion && <span>Camión: <strong className="text-gray-900">{highlightMatch(op.patente_camion, busqueda)}</strong></span>}
-                          {op.patente_semi && <span>Semi: <strong className="text-gray-900">{highlightMatch(op.patente_semi, busqueda)}</strong></span>}
+                        <div className="font-bold text-gray-900 dark:text-slate-100 text-sm">{highlightMatch(op.chofer || 'Sin chofer', busqueda)}</div>
+                        <div className="text-sm text-gray-600 dark:text-slate-400 mt-1 flex gap-3">
+                          {op.patente_camion && <span>Camión: <strong className="text-gray-900 dark:text-slate-200">{highlightMatch(op.patente_camion, busqueda)}</strong></span>}
+                          {op.patente_semi && <span>Semi: <strong className="text-gray-900 dark:text-slate-200">{highlightMatch(op.patente_semi, busqueda)}</strong></span>}
                         </div>
                       </td>
 
                       <td className="p-3 md:p-4 whitespace-nowrap align-middle">
-                        <span className="px-3 py-1 inline-flex text-xs font-bold rounded-full bg-blue-100 text-blue-800 uppercase">
+                        <span className="px-3 py-1 inline-flex text-xs font-bold rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 uppercase">
                           {highlightMatch(op.tipo_operacion || 'N/A', busqueda)}
                         </span>
                       </td>
@@ -873,13 +873,13 @@ export default function FacturacionPage() {
                               numeroFn: op.numero_fn, 
                               numeroFactura: op.numero_factura || op.factura || "" 
                             })}
-                            className="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded-xl shadow-sm transition-colors text-xs font-bold cursor-pointer w-full"
+                            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white py-2 px-4 rounded-xl shadow-sm transition-colors text-xs font-bold cursor-pointer w-full"
                           >
                             FACTURADO
                           </button>
                           <button
                             onClick={() => generarPDF(op)}
-                            className="bg-green-500 hover:bg-green-700 text-white py-2 px-4 rounded-xl shadow-sm transition-colors text-xs font-bold cursor-pointer w-full"
+                            className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white py-2 px-4 rounded-xl shadow-sm transition-colors text-xs font-bold cursor-pointer w-full"
                           >
                             PDF Op.
                           </button>
@@ -896,20 +896,20 @@ export default function FacturacionPage() {
 
       {/* Modal para Ingreso de Número de Comprobante / Factura */}
       {modalFacturar.abierto && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-100 transform transition-all animate-in fade-in zoom-in duration-200">
-            <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#111c38] rounded-2xl shadow-2xl p-6 max-w-md w-full border border-gray-100 dark:border-slate-800 transform transition-all animate-in fade-in zoom-in duration-200">
+            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">
               🧾
             </div>
-            <h3 className="text-lg font-bold text-gray-900 text-center mb-1">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 text-center mb-1">
               Marcar como Facturado
             </h3>
-            <p className="text-xs text-gray-500 text-center mb-4">
-              Operación: <span className="font-semibold text-gray-800">{modalFacturar.numeroFn}</span>
+            <p className="text-xs text-gray-500 dark:text-slate-400 text-center mb-4">
+              Operación: <span className="font-semibold text-gray-800 dark:text-slate-200">{modalFacturar.numeroFn}</span>
             </p>
 
             <div className="mb-5 text-left">
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">
                 Número de Comprobante / Factura (Opcional):
               </label>
               <input
@@ -920,7 +920,7 @@ export default function FacturacionPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') confirmarFacturacion();
                 }}
-                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-800"
+                className="w-full px-3.5 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-300 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-gray-800 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500"
                 autoFocus
               />
             </div>
@@ -928,13 +928,13 @@ export default function FacturacionPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setModalFacturar({ abierto: false, numeroFn: "", numeroFactura: "" })}
-                className="w-1/2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 px-4 rounded-xl transition text-sm cursor-pointer"
+                className="w-1/2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 font-semibold py-2.5 px-4 rounded-xl transition text-sm cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmarFacturacion}
-                className="w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md transition text-sm cursor-pointer"
+                className="w-1/2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md transition text-sm cursor-pointer"
               >
                 Confirmar
               </button>
@@ -945,16 +945,16 @@ export default function FacturacionPage() {
 
       {/* Modal de Alerta */}
       {mensajeAlerta && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full text-center border border-gray-100 transform transition-all animate-in fade-in zoom-in duration-200">
-            <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#111c38] rounded-2xl shadow-2xl p-6 max-w-md w-full text-center border border-gray-100 dark:border-slate-800 transform transition-all animate-in fade-in zoom-in duration-200">
+            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-4 text-xl font-bold shadow-inner">
               💲
             </div>
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Aviso del Sistema</h3>
-            <p className="text-gray-600 text-sm mb-6 leading-relaxed">{mensajeAlerta}</p>
+            <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-2">Aviso del Sistema</h3>
+            <p className="text-gray-600 dark:text-slate-300 text-sm mb-6 leading-relaxed">{mensajeAlerta}</p>
             <button
               onClick={() => setMensajeAlerta(null)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md transition duration-200 text-sm cursor-pointer"
+              className="w-full bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md transition duration-200 text-sm cursor-pointer"
             >
               Aceptar
             </button>
