@@ -65,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative overflow-x-auto m-0 p-0 transition-colors duration-300">
         
-        {/* 🖼️ Marca de Agua Repetida (Se adapta la opacidad según el modo) */}
+        {/* 🖼️ Marca de Agua Repetida */}
         <div className="fixed inset-0 pointer-events-none z-0 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-12 p-8 opacity-5 dark:opacity-10 dark:invert overflow-hidden">
           {Array.from({ length: 20 }).map((_, i) => (
             <div key={i} className="flex items-center justify-center p-4">
