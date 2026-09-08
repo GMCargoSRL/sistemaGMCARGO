@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import CustomSelect from './CustomSelect'
 
 const ESTADO_INICIAL = { 
   numero_fn: '', cliente: '', chofer: '', dni_chofer: '', telefono_chofer: '', contenedor_num: '', 
@@ -37,10 +36,7 @@ export default function FletesPage() {
 
   const [operacionGuardada, setOperacionGuardada] = useState<any | null>(null)
 
-  const [patentesCamion, setPatentesCamion] = useState<string[]>([])
-  const [patentesSemi, setPatentesSemi] = useState<string[]>([])
-  const [unidadesFrecuentes, setUnidadesFrecuentes] = useState<{ label: string; camion: string; semi: string }[]>([])
-
+  // Estados para el control del cartel de advertencia al salir sin guardar
   const [mostrarAvisoSalida, setMostrarAvisoSalida] = useState(false)
   const [rutaPendiente, setRutaPendiente] = useState<string | null>(null)
 
@@ -63,6 +59,7 @@ export default function FletesPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [hayDatosCargados, operacionGuardada])
 
+  // Intercepta enlaces internos para advertir cambios sin guardar
   useEffect(() => {
     const handleAnchorClick = (e: MouseEvent) => {
       const target = (e.target as HTMLElement).closest('a')
@@ -85,144 +82,28 @@ export default function FletesPage() {
     router.push(rutaPendiente || '/')
   }
 
-  const cargarDatosReferencia = async () => {
-    setCargandoDatos(true)
-    const { data: c } = await supabase.from('choferes').select('*')
-    const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
-    const { data: eq } = await supabase.from('equipos').select('patente_camion, patente_semi')
-    const { data: fletes } = await supabase.from('fletes_nacionales').select('patente_camion, patente_semi')
-
-    if (c) setChoferes(c)
-    if (cl) setClientes(cl)
-
-    const camiones = new Set<string>()
-    const semis = new Set<string>()
-
-    if (c) {
-      c.forEach((item: any) => {
-        if (item.patente_camion?.trim()) camiones.add(item.patente_camion.trim().toUpperCase())
-        if (item.patente_semi?.trim()) semis.add(item.patente_semi.trim().toUpperCase())
-      })
-    }
-
-    if (eq) {
-      eq.forEach((item: any) => {
-        if (item.patente_camion?.trim()) camiones.add(item.patente_camion.trim().toUpperCase())
-        if (item.patente_semi?.trim()) semis.add(item.patente_semi.trim().toUpperCase())
-      })
-    }
-
-    // Calcular las unidades / combinaciones más usadas
-    if (fletes) {
-      const conteoCombinaciones: { [key: string]: { camion: string; semi: string; count: number } } = {}
-      
-      fletes.forEach((f: any) => {
-        const camion = f.patente_camion?.trim().toUpperCase()
-        const semi = f.patente_semi?.trim().toUpperCase()
-        if (camion) {
-          const key = `${camion}_${semi || ''}`
-          if (!conteoCombinaciones[key]) {
-            conteoCombinaciones[key] = { camion, semi: semi || '', count: 0 }
-          }
-          conteoCombinaciones[key].count += 1
-        }
-      })
-
-      const ordenadas = Object.values(conteoCombinaciones)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10) // Tomar las 10 más frecuentes
-        .map(item => ({
-          label: item.semi ? `${item.camion} / ${item.semi}` : item.camion,
-          camion: item.camion,
-          semi: item.semi
-        }))
-
-      setUnidadesFrecuentes(ordenadas)
-    }
-
-    setPatentesCamion(Array.from(camiones))
-    setPatentesSemi(Array.from(semis))
-    setCargandoDatos(false)
-  }
-
   useEffect(() => {
-    cargarDatosReferencia()
+    async function fetchData() {
+      setCargandoDatos(true)
+      const { data: c } = await supabase.from('choferes').select('*')
+      const { data: cl } = await supabase.from('clientes').select('"Razon Social"')
+      if (c) setChoferes(c)
+      if (cl) setClientes(cl)
+      setCargandoDatos(false)
+    }
+    fetchData()
   }, [])
 
   const handleChoferChange = (nombre: string) => {
     const seleccionado = choferes.find(c => c.CHOFER === nombre)
-    setForm(prev => ({ 
-      ...prev, 
+    setForm({ 
+      ...form, 
       chofer: nombre,
-      dni_chofer: seleccionado ? (seleccionado["DOC. ID."] || '') : prev.dni_chofer,
-      telefono_chofer: seleccionado ? (seleccionado.TEL || '') : prev.telefono_chofer,
-      patente_camion: seleccionado ? (seleccionado.patente_camion || '') : prev.patente_camion,
-      patente_semi: seleccionado ? (seleccionado.patente_semi || '') : prev.patente_semi
-    }))
-  }
-
-  const handleCamionChange = async (valor: string) => {
-    const camionUpper = valor.toUpperCase().trim()
-    let semiAsociado = ''
-
-    const { data } = await supabase
-      .from('equipos')
-      .select('patente_semi')
-      .eq('patente_camion', camionUpper)
-      .maybeSingle()
-
-    if (data && data.patente_semi) {
-      semiAsociado = data.patente_semi.toUpperCase()
-    } else {
-      const choferMatch = choferes.find(c => c.patente_camion?.toUpperCase().replace(/\s+/g, '') === camionUpper.replace(/\s+/g, ''))
-      if (choferMatch && choferMatch.patente_semi) {
-        semiAsociado = choferMatch.patente_semi.toUpperCase()
-      }
-    }
-
-    setForm(prev => ({
-      ...prev,
-      patente_camion: camionUpper,
-      patente_semi: semiAsociado || prev.patente_semi
-    }))
-  }
-
-  const handleSemiChange = async (valor: string) => {
-    const semiUpper = valor.toUpperCase().trim()
-    let camionAsociado = ''
-
-    const { data } = await supabase
-      .from('equipos')
-      .select('patente_camion')
-      .eq('patente_semi', semiUpper)
-      .maybeSingle()
-
-    if (data && data.patente_camion) {
-      camionAsociado = data.patente_camion.toUpperCase()
-    } else {
-      const choferMatch = choferes.find(c => c.patente_semi?.toUpperCase().replace(/\s+/g, '') === semiUpper.replace(/\s+/g, ''))
-      if (choferMatch && choferMatch.patente_camion) {
-        camionAsociado = choferMatch.patente_camion.toUpperCase()
-      }
-    }
-
-    setForm(prev => ({
-      ...prev,
-      patente_semi: semiUpper,
-      patente_camion: camionAsociado || prev.patente_camion
-    }))
-  }
-
-  const handleUnidadFrecuenteSeleccionada = (label: string) => {
-    const unidad = unidadesFrecuentes.find(u => u.label === label)
-    if (unidad) {
-      setForm(prev => ({
-        ...prev,
-        patente_camion: unidad.camion,
-        patente_semi: unidad.semi
-      }))
-      toast.info(`Unidad seleccionada: ${unidad.label}`)
-    }
+      dni_chofer: seleccionado ? (seleccionado["DOC. ID."] || '') : '',
+      telefono_chofer: seleccionado ? (seleccionado.TEL || '') : '',
+      patente_camion: seleccionado ? (seleccionado.patente_camion || '') : '',
+      patente_semi: seleccionado ? (seleccionado.patente_semi || '') : ''
+    })
   }
 
   const generarVN = async () => {
@@ -235,7 +116,7 @@ export default function FletesPage() {
         if (!isNaN(num) && num > maxNum) maxNum = num
       })
     }
-    setForm(prev => ({ ...prev, numero_fn: `VN-${(maxNum + 1).toString().padStart(4, '0')}` }))
+    setForm({ ...form, numero_fn: `VN-${(maxNum + 1).toString().padStart(4, '0')}` })
     toast.success("Número de operación generado correctamente")
   }
 
@@ -326,36 +207,14 @@ export default function FletesPage() {
     if (form.cliente && !clientes.find(c => c["Razon Social"] === form.cliente)) {
       await supabase.from('clientes').insert([{ "Razon Social": form.cliente }])
     }
-    
-    if (form.chofer) {
-      const choferExistente = choferes.find(c => c.CHOFER === form.chofer)
-      if (!choferExistente) {
-        await supabase.from('choferes').insert([{ 
-          "CHOFER": form.chofer, 
-          "DOC. ID.": form.dni_chofer, 
-          "TEL": form.telefono_chofer,
-          "patente_camion": form.patente_camion,
-          "patente_semi": form.patente_semi
-        }])
-      } else {
-        await supabase.from('choferes').update({
-          "DOC. ID.": form.dni_chofer || choferExistente["DOC. ID."],
-          "TEL": form.telefono_chofer || choferExistente.TEL,
-          "patente_camion": form.patente_camion,
-          "patente_semi": form.patente_semi
-        }).eq('CHOFER', form.chofer)
-      }
-    }
-
-    if (form.patente_camion) {
-      await supabase.from('equipos').upsert(
-        { 
-          patente_camion: form.patente_camion.toUpperCase().trim(), 
-          patente_semi: form.patente_semi ? form.patente_semi.toUpperCase().trim() : null,
-          updated_at: new Date().toISOString()
-        },
-        { onConflict: 'patente_camion' }
-      )
+    if (form.chofer && !choferes.find(c => c.CHOFER === form.chofer)) {
+      await supabase.from('choferes').insert([{ 
+        "CHOFER": form.chofer, 
+        "DOC. ID.": form.dni_chofer, 
+        "TEL": form.telefono_chofer,
+        "patente_camion": form.patente_camion,
+        "patente_semi": form.patente_semi
+      }])
     }
 
     const dataToSend = { ...form }
@@ -371,7 +230,6 @@ export default function FletesPage() {
     } else { 
       toast.success("¡Operación cargada con éxito!")
       setOperacionGuardada(dataToSend)
-      await cargarDatosReferencia()
     }
   }
 
@@ -428,6 +286,7 @@ export default function FletesPage() {
     toast.info("Formulario blanqueado")
   }
 
+  // Estilos reutilizables optimizados para máxima legibilidad
   const inputClass = "w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-gray-500 dark:placeholder-slate-400 p-2.5 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none transition-colors text-sm font-sans"
   const selectClass = "w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 rounded-lg focus:ring-2 focus:ring-sky-500 outline-none transition-colors text-sm font-sans cursor-pointer"
   const labelClass = "text-[11px] uppercase font-bold text-gray-600 dark:text-slate-300 mb-1 font-sans"
@@ -489,16 +348,12 @@ export default function FletesPage() {
             <button type="button" onClick={generarVN} className="bg-sky-600 hover:bg-sky-700 text-white px-4 rounded-lg font-bold text-sm transition cursor-pointer shadow-sm">Generar</button>
           </div>
             
-          <CustomSelect
-            className="md:col-span-2"
-            options={clientes.filter((c: any) => c && c["Razon Social"]).map((c: any) => ({
-              label: c["Razon Social"],
-              value: c["Razon Social"]
-            }))}
-            value={form.cliente}
-            onChange={(val) => setForm({ ...form, cliente: val })}
-            placeholder="Seleccionar o escribir Cliente *"
-          />
+          <input list="lista-clientes" placeholder="Seleccionar o escribir Cliente *" className={`${inputClass} md:col-span-2`} value={form.cliente} onChange={e => setForm({...form, cliente: e.target.value})} />
+          <datalist id="lista-clientes">
+            {clientes.filter((c: any) => c && c["Razon Social"]).map((c: any) => (
+              <option key={c["Razon Social"]} value={c["Razon Social"]} />
+            ))}
+          </datalist>
 
           <input type="text" placeholder="Documento Aduanero" className={`${inputClass} md:col-span-1`} value={form.documento_aduanero} onChange={e => setForm({...form, documento_aduanero: e.target.value})} />
           
@@ -555,56 +410,17 @@ export default function FletesPage() {
       <section className="bg-white dark:bg-slate-900/90 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
         <h3 className="font-bold text-sky-700 dark:text-sky-400 mb-4 uppercase text-sm tracking-wider">Chofer y Unidad</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <CustomSelect
-            options={choferes.filter((c: any) => c && c.CHOFER).map((c: any) => ({
-              label: c.CHOFER,
-              value: c.CHOFER,
-              sublabel: c.patente_camion ? `Camión: ${c.patente_camion}` : undefined
-            }))}
-            value={form.chofer}
-            onChange={(val) => handleChoferChange(val)}
-            placeholder="Seleccionar o escribir Chofer *"
-          />
-          
+          <input list="lista-choferes" placeholder="Seleccionar o escribir Chofer *" className={inputClass} value={form.chofer} onChange={e => handleChoferChange(e.target.value)} />
+          <datalist id="lista-choferes">
+            {choferes.filter((c: any) => c && c.CHOFER).map((c: any) => (
+              <option key={c.CHOFER} value={c.CHOFER} />
+            ))}
+          </datalist>
           <input type="text" placeholder="DNI" className={inputClass} value={form.dni_chofer} onChange={e => setForm({...form, dni_chofer: e.target.value})} />
           <input type="text" placeholder="Teléfono" className={inputClass} value={form.telefono_chofer} onChange={e => setForm({...form, telefono_chofer: e.target.value})} />
-          
-          {/* 🚚 DESPLEGABLE: UNIDADES MÁS UTILIZADAS */}
-          <CustomSelect
-            options={unidadesFrecuentes.map((u) => ({
-              label: u.label,
-              value: u.label,
-              sublabel: 'Frecuente'
-            }))}
-            value=""
-            onChange={(val) => handleUnidadFrecuenteSeleccionada(val)}
-            placeholder="⭐ Unidades más utilizadas..."
-            icon="⚡"
-          />
-
-          {/* 🚛 PATENTE CAMIÓN */}
-          <CustomSelect
-            options={patentesCamion.map((p) => ({
-              label: p,
-              value: p
-            }))}
-            value={form.patente_camion}
-            onChange={(val) => handleCamionChange(val)}
-            placeholder="Patente Camión"
-            icon="🚛"
-          />
-
-          {/* 🛒 PATENTE SEMI */}
-          <CustomSelect
-            options={patentesSemi.map((p) => ({
-              label: p,
-              value: p
-            }))}
-            value={form.patente_semi}
-            onChange={(val) => handleSemiChange(val)}
-            placeholder="Patente Semi"
-            icon="🛒"
-          />
+          <div className="hidden md:block"></div>
+          <input type="text" placeholder="Patente Camión" className={inputClass} value={form.patente_camion} onChange={e => setForm({...form, patente_camion: e.target.value})} />
+          <input type="text" placeholder="Patente Semi" className={inputClass} value={form.patente_semi} onChange={e => setForm({...form, patente_semi: e.target.value})} />
         </div>
       </section>
 
