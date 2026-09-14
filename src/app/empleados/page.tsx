@@ -12,13 +12,33 @@ interface Empleado {
   activo: boolean
 }
 
+// Función auxiliar para calcular automáticamente los próximos N viernes a partir de hoy
+const obtenerProximosViernes = (cantidad: number = 5): string => {
+  const fechas: string[] = []
+  const hoy = new Date()
+  const fecha = new Date(hoy)
+
+  // Encontrar el primer viernes que sea igual o posterior a hoy
+  const diasHastaViernes = (5 - fecha.getDay() + 7) % 7
+  fecha.setDate(fecha.getDate() + diasHastaViernes)
+
+  for (let i = 0; i < cantidad; i++) {
+    const dia = String(fecha.getDate()).padStart(2, '0')
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+    fechas.push(`${dia}/${mes}`)
+    fecha.setDate(fecha.getDate() + 7)
+  }
+
+  return fechas.join(' – ')
+}
+
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<Empleado | null>(null)
   
-  // Estado para modal / formulario
+  // Estado para modal / formulario de Empleados
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [formEmpleado, setFormEmpleado] = useState({
@@ -27,6 +47,14 @@ export default function EmpleadosPage() {
     cargo: '',
     activo: true,
   })
+
+  // Estados personalizables para el contenido de la Firma Corporativa
+  const [usarFechasAuto, setUsarFechasAuto] = useState(true)
+  const [fechasSalidas, setFechasSalidas] = useState(obtenerProximosViernes(5))
+  const [direccionTexto, setDireccionTexto] = useState('Avenida Belgrano 687, 3er Piso, Of. 12 — Atención / Retiro documental: L a V de 10 a 13 – 14 a 17 hs.')
+  const [telefonosTexto, setTelefonosTexto] = useState('+5411 2150 4310  |  +5411 2150 4311  |  +5411 4343 2748')
+  const [rutasTexto, setRutasTexto] = useState('EXPORTACIÓN: Origen ARGENTINA → Destino PARAGUAY<br>IMPORTACIÓN: Origen PARAGUAY → Destino ARGENTINA')
+  const [cutoffTexto, setCutoffTexto] = useState('▪ Corte operativo & documental / Cut off: Jueves anterior 14:00 hs.<br>▪ Llegada a ASUNCIÓN: Todos los Lunes posteriores a la salida.')
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,7 +85,14 @@ export default function EmpleadosPage() {
     cargarEmpleados()
   }, [])
 
-  // Abrir modal para Crear
+  // Recalcular fechas automáticas si el interruptor está activado
+  useEffect(() => {
+    if (usarFechasAuto) {
+      setFechasSalidas(obtenerProximosViernes(5))
+    }
+  }, [usarFechasAuto])
+
+  // Abrir modal para Crear Empleado
   const abrirModalCrear = () => {
     setEditandoId(null)
     setFormEmpleado({
@@ -69,7 +104,7 @@ export default function EmpleadosPage() {
     setModalAbierto(true)
   }
 
-  // Abrir modal para Editar
+  // Abrir modal para Editar Empleado
   const abrirModalEditar = (emp: Empleado) => {
     setEditandoId(emp.id)
     setFormEmpleado({
@@ -81,7 +116,7 @@ export default function EmpleadosPage() {
     setModalAbierto(true)
   }
 
-  // Guardar (Crear o Editar)
+  // Guardar (Crear o Editar Empleado)
   const guardarEmpleado = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -138,9 +173,10 @@ export default function EmpleadosPage() {
     }
   }
 
-  // Generador de Firma HTML pública para producción en Vercel
+  // Generador de Firma HTML dinámica con datos modificables
   const generarHtmlFirma = (emp: Empleado) => {
     const logoUrl = 'https://sistema-gmcargo.vercel.app/logo.png'
+    const textoSalidas = usarFechasAuto ? obtenerProximosViernes(5) : fechasSalidas
 
     return `
 <table cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.4; width: 100%; max-width: 620px;">
@@ -148,13 +184,11 @@ export default function EmpleadosPage() {
     <td colspan="2" style="padding-bottom: 12px; color: #555555; font-size: 13px;">Best regards / Cordialmente,</td>
   </tr>
   <tr>
-    <!-- ISOLOGO CIRCULAR GM CARGO (LINK A LA WEB) -->
     <td style="border-bottom: 2px solid #1A448F; padding-bottom: 12px; vertical-align: middle; width: 70px;">
       <a href="https://www.gmcargo.com" target="_blank" style="text-decoration: none; display: block;">
         <img src="${logoUrl}" alt="GM CARGO SRL" width="60" height="60" style="display: block; border: 0; outline: none; text-decoration: none;" />
       </a>
     </td>
-    <!-- DATOS PERSONALES DEL EMPLEADO -->
     <td style="border-bottom: 2px solid #1A448F; padding-bottom: 12px; vertical-align: middle; padding-left: 12px;">
       <span style="font-size: 16px; font-weight: bold; color: #1A448F;">${emp.nombre_apellido}</span>
       <span style="color: #888888;"> | </span>
@@ -168,8 +202,8 @@ export default function EmpleadosPage() {
   </tr>
   <tr>
     <td colspan="2" style="padding-top: 10px; padding-bottom: 15px; font-size: 12px; color: #666666;">
-      Avenida Belgrano 687, 3<sup>er</sup> Piso, Of. 12 — Atención / Retiro documental: L a V de 10 a 13 – 14 a 17 hs.<br>
-      <strong style="color: #D9534F;">Ph/Fax:</strong> +5411 2150 4310 &nbsp;|&nbsp; +5411 2150 4311 &nbsp;|&nbsp; +5411 4343 2748<br>
+      ${direccionTexto}<br>
+      <strong style="color: #D9534F;">Ph/Fax:</strong> ${telefonosTexto}<br>
       CP C1092AAG &nbsp;|&nbsp; Buenos Aires — Argentina
     </td>
   </tr>
@@ -181,19 +215,17 @@ export default function EmpleadosPage() {
         </tr>
         <tr>
           <td align="center" style="font-weight: bold; color: #444444;">
-            EXPORTACIÓN: Origen ARGENTINA &rarr; Destino PARAGUAY<br>
-            IMPORTACIÓN: Origen PARAGUAY &rarr; Destino ARGENTINA
+            ${rutasTexto}
           </td>
         </tr>
         <tr>
           <td align="center" style="background-color: #EBF3FC; font-weight: bold; color: #1A448F;">
-            Próximas Salidas VIERNES: 18/09 – 25/09 – 02/10 – 09/10 – 16/10
+            Próximas Salidas VIERNES: ${textoSalidas}
           </td>
         </tr>
         <tr>
           <td align="center" style="font-size: 11px; color: #555555;">
-            &#9642; <strong>Corte operativo &amp; documental / Cut off:</strong> Jueves anterior 14:00 hs.<br>
-            &#9642; <strong>Llegada a ASUNCIÓN:</strong> Todos los Lunes posteriores a la salida.
+            ${cutoffTexto}
           </td>
         </tr>
       </table>
@@ -203,7 +235,7 @@ export default function EmpleadosPage() {
 `.trim()
   }
 
-  // Copiar firma al portapapeles
+  // Copiar firma HTML al portapapeles
   const copiarFirma = (emp: Empleado) => {
     const htmlContent = generarHtmlFirma(emp)
     
@@ -242,7 +274,7 @@ export default function EmpleadosPage() {
             👥 Planilla de Empleados &amp; Firmas
           </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Administra los cargos y datos de los integrantes del equipo para generar firmas de correo automáticas.
+            Administra los datos corporativos para generar firmas de correo actualizadas dinámicamente.
           </p>
         </div>
 
@@ -264,7 +296,7 @@ export default function EmpleadosPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* TABLA DE EMPLEADOS */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="lg:col-span-6 space-y-4">
           <div className="bg-white dark:bg-slate-900/90 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors">
             <input
               type="text"
@@ -353,17 +385,66 @@ export default function EmpleadosPage() {
           </div>
         </div>
 
-        {/* VISTA PREVIA DE LA FIRMA */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors space-y-4 sticky top-24">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
+        {/* CONFIGURACIÓN Y VISTA PREVIA DE LA FIRMA */}
+        <div className="lg:col-span-6 space-y-4">
+          <div className="bg-white dark:bg-slate-900/90 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors space-y-4">
+            
+            {/* Panel de Modificación Manual / Automática */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center justify-between">
+                ⚙️ Configuración de Firma y Fechas
+                <label className="flex items-center gap-2 cursor-pointer font-normal text-xs text-sky-600 dark:text-sky-400 lowercase">
+                  <input
+                    type="checkbox"
+                    checked={usarFechasAuto}
+                    onChange={(e) => setUsarFechasAuto(e.target.checked)}
+                    className="w-4 h-4 text-sky-600 rounded"
+                  />
+                  Fechas automáticas (próximos 5 viernes)
+                </label>
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Próximas Salidas (Fechas):</label>
+                  <input
+                    type="text"
+                    disabled={usarFechasAuto}
+                    value={fechasSalidas}
+                    onChange={(e) => setFechasSalidas(e.target.value)}
+                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:bg-slate-100 dark:disabled:bg-slate-900/50 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Teléfonos:</label>
+                  <input
+                    type="text"
+                    value={telefonosTexto}
+                    onChange={(e) => setTelefonosTexto(e.target.value)}
+                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Dirección y Horarios:</label>
+                  <input
+                    type="text"
+                    value={direccionTexto}
+                    onChange={(e) => setDireccionTexto(e.target.value)}
+                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Vista previa */}
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
               <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 text-sm">
-                ✉️ Vista Previa de Firma Corporativa
+                ✉️ Vista Previa
               </h3>
               {empleadoSeleccionado && (
                 <button
                   onClick={() => copiarFirma(empleadoSeleccionado)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs transition cursor-pointer shadow-sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs transition cursor-pointer shadow-sm flex items-center gap-1.5"
                 >
                   📋 Copiar Firma
                 </button>
@@ -371,12 +452,12 @@ export default function EmpleadosPage() {
             </div>
 
             {empleadoSeleccionado ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="text-xs text-slate-500 dark:text-slate-400">
-                  Firma generada para <strong className="text-slate-800 dark:text-slate-200">{empleadoSeleccionado.nombre_apellido}</strong> ({empleadoSeleccionado.email}):
+                  Firma para <strong className="text-slate-800 dark:text-slate-200">{empleadoSeleccionado.nombre_apellido}</strong> ({empleadoSeleccionado.email}):
                 </div>
 
-                <div className="p-4 bg-white text-slate-900 rounded-lg border border-gray-200 overflow-x-auto shadow-inner min-h-[300px]">
+                <div className="p-4 bg-white text-slate-900 rounded-lg border border-gray-200 overflow-x-auto shadow-inner min-h-[280px]">
                   <div
                     dangerouslySetInnerHTML={{
                       __html: generarHtmlFirma(empleadoSeleccionado),
@@ -409,7 +490,6 @@ export default function EmpleadosPage() {
                 <input
                   type="text"
                   required
-                  placeholder=" "
                   value={formEmpleado.nombre_apellido}
                   onChange={(e) => setFormEmpleado({ ...formEmpleado, nombre_apellido: e.target.value })}
                   className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-sky-500"
@@ -423,7 +503,6 @@ export default function EmpleadosPage() {
                 <input
                   type="email"
                   required
-                  placeholder=" "
                   value={formEmpleado.email}
                   onChange={(e) => setFormEmpleado({ ...formEmpleado, email: e.target.value })}
                   className="w-full border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-sky-500"
