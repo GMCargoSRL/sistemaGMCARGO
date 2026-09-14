@@ -105,9 +105,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/fletes" className="block p-3 hover:bg-slate-700 rounded transition-colors" onClick={() => setSidebarOpen(false)}>Nueva Operación</Link>
               <Link href="/terminados" className="block p-3 hover:bg-emerald-800 rounded text-emerald-100 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Terminados</Link>
               <Link href="/facturacion" className="block p-3 hover:bg-yellow-600 rounded text-orange-300 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>Facturación</Link>
-              
-              {/* 👥 Nueva sección agregada: Empleados y Firmas */}
-              <Link href="/empleados" className="block p-3 hover:bg-sky-800 rounded text-sky-200 font-medium transition-colors" onClick={() => setSidebarOpen(false)}>👥 Empleados & Firmas</Link>
             </nav>
 
             {/* 🌙 Botón de cambio de modo en el menú lateral */}
