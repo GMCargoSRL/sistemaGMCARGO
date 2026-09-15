@@ -186,7 +186,7 @@ export default function EmpleadosPage() {
     setEmpleadoAEliminar(null)
   }
 
-  // Generador de Firma HTML dinámica con datos modificables
+  // Generador de Firma HTML dinámica optimizada contra saltos de línea de Outlook
   const generarHtmlFirma = (emp: Empleado) => {
     const logoUrl = 'https://sistema-gmcargo.vercel.app/logo.png'
     const textoSalidas = usarFechasAuto ? obtenerProximosViernes(5) : fechasSalidas
@@ -195,52 +195,52 @@ export default function EmpleadosPage() {
     const cutoffFormatted = cutoffTexto.replace(/\n/g, '<br>')
 
     return `
-<table cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.3; width: 100%; max-width: 620px;">
+<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.2; width: 100%; max-width: 620px; border-collapse: collapse;">
   <tr>
-    <td colspan="2" style="padding-bottom: 8px; color: #555555; font-size: 13px;">Best regards / Cordialmente,</td>
+    <td colspan="2" style="padding: 0 0 8px 0; margin: 0; color: #555555; font-size: 13px; line-height: 1.2;">Best regards / Cordialmente,</td>
   </tr>
   <tr>
-    <td style="border-bottom: 2px solid #1A448F; padding-bottom: 8px; vertical-align: middle; width: 70px;">
+    <td style="border-bottom: 2px solid #1A448F; padding: 0 0 8px 0; margin: 0; vertical-align: middle; width: 70px;">
       <a href="https://www.gmcargo.com" target="_blank" style="text-decoration: none; display: block;">
         <img src="${logoUrl}" alt="GM CARGO SRL" width="60" height="60" style="display: block; border: 0; outline: none; text-decoration: none;" />
       </a>
     </td>
-    <td style="border-bottom: 2px solid #1A448F; padding-bottom: 8px; vertical-align: middle; padding-left: 12px;">
-      <span style="font-size: 16px; font-weight: bold; color: #1A448F;">${emp.nombre_apellido}</span>
+    <td style="border-bottom: 2px solid #1A448F; padding: 0 0 8px 12px; margin: 0; vertical-align: middle; line-height: 1.25;">
+      <span style="font-size: 16px; font-weight: bold; color: #1A448F; line-height: 1.2;">${emp.nombre_apellido}</span>
       <span style="color: #888888;"> | </span>
       <a href="mailto:${emp.email}" style="color: #1A448F; text-decoration: none; font-weight: 500;">${emp.email}</a><br>
-      <span style="font-weight: bold; color: #444444; font-size: 13px;">${emp.cargo}</span>
+      <span style="font-weight: bold; color: #444444; font-size: 13px; line-height: 1.2;">${emp.cargo}</span>
       <span style="color: #888888;"> | </span>
-      <span style="font-weight: bold; color: #1A448F;">GM CARGO SRL</span>
+      <span style="font-weight: bold; color: #1A448F; line-height: 1.2;">GM CARGO SRL</span>
       <span style="color: #888888;"> | </span>
       <a href="https://www.gmcargo.com" target="_blank" style="color: #1A448F; text-decoration: none;">www.gmcargo.com</a>
     </td>
   </tr>
   <tr>
-    <td colspan="2" style="padding-top: 8px; padding-bottom: 10px; font-size: 12px; color: #666666; line-height: 1.35;">
+    <td colspan="2" style="padding: 8px 0 10px 0; margin: 0; font-size: 12px; color: #666666; line-height: 1.3;">
       ${direccionTexto}<br>
       <strong style="color: #D9534F;">Ph/Fax:</strong> ${telefonosTexto}<br>
       CP C1092AAG &nbsp;|&nbsp; Buenos Aires — Argentina
     </td>
   </tr>
   <tr>
-    <td colspan="2">
-      <table cellpadding="0" cellspacing="0" style="width: 100%; border: 1px solid #1A448F; background-color: #F8FAFC; border-radius: 6px; font-size: 12px;">
+    <td colspan="2" style="padding: 0; margin: 0;">
+      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; border: 1px solid #1A448F; background-color: #F8FAFC; border-radius: 6px; font-size: 12px; border-collapse: collapse;">
         <tr>
-          <td align="center" style="padding: 6px 8px 3px 8px;"><strong style="font-size: 12px; color: #1A448F; text-transform: uppercase;">Servicio Consolidado Terrestre</strong></td>
+          <td align="center" style="padding: 6px 8px 3px 8px; margin: 0; font-size: 12px; line-height: 1.1;"><strong style="color: #1A448F; text-transform: uppercase;">Servicio Consolidado Terrestre</strong></td>
         </tr>
         <tr>
-          <td align="center" style="padding: 2px 8px 5px 8px; font-weight: bold; color: #444444; line-height: 1.25;">
+          <td align="center" style="padding: 2px 8px 4px 8px; margin: 0; font-size: 12px; font-weight: bold; color: #444444; line-height: 1.2;">
             ${rutasFormatted}
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding: 4px 8px; background-color: #EBF3FC; font-weight: bold; color: #1A448F; border-top: 1px solid #D0E2F7; border-bottom: 1px solid #D0E2F7;">
+          <td align="center" style="padding: 4px 8px; margin: 0; font-size: 12px; background-color: #EBF3FC; font-weight: bold; color: #1A448F; border-top: 1px solid #D0E2F7; border-bottom: 1px solid #D0E2F7; line-height: 1.2;">
             Próximas Salidas VIERNES: ${textoSalidas}
           </td>
         </tr>
         <tr>
-          <td align="center" style="padding: 5px 8px 6px 8px; font-size: 11px; color: #555555; line-height: 1.25;">
+          <td align="center" style="padding: 4px 8px 5px 8px; margin: 0; font-size: 11px; color: #555555; line-height: 1.2;">
             ${cutoffFormatted}
           </td>
         </tr>
