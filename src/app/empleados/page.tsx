@@ -195,7 +195,8 @@ export default function EmpleadosPage() {
   // Generador de Firma HTML dinámica vinculada a la API de banner
   const generarHtmlFirma = (emp: Empleado) => {
     const logoUrl = 'https://sistema-gmcargo.vercel.app/logo.png'
-    const bannerUrl = `https://sistema-gmcargo.vercel.app/api/banner-salidas?t=${Date.now()}`
+    // URL limpia sin parámetros dinámicos de tiempo para no requerir actualización manual en Outlook
+    const bannerUrl = 'https://sistema-gmcargo.vercel.app/api/banner-salidas'
 
     return `
 <table cellpadding="0" cellspacing="0" border="0" width="600" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.2; width: 600px; border-collapse: collapse;">
