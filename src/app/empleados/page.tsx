@@ -38,6 +38,9 @@ export default function EmpleadosPage() {
   const [busqueda, setBusqueda] = useState('')
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<Empleado | null>(null)
   
+  // Estado para controlar la visibilidad del panel de edición de firma
+  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false)
+
   // Estado para modal / formulario de Empleados
   const [modalAbierto, setModalAbierto] = useState(false)
   const [editandoId, setEditandoId] = useState<string | null>(null)
@@ -48,13 +51,16 @@ export default function EmpleadosPage() {
     activo: true,
   })
 
+  // Estado para modal de confirmación de eliminación
+  const [empleadoAEliminar, setEmpleadoAEliminar] = useState<{ id: string; nombre: string } | null>(null)
+
   // Estados personalizables para el contenido de la Firma Corporativa
   const [usarFechasAuto, setUsarFechasAuto] = useState(true)
   const [fechasSalidas, setFechasSalidas] = useState(obtenerProximosViernes(5))
   const [direccionTexto, setDireccionTexto] = useState('Avenida Belgrano 687, 3er Piso, Of. 12 — Atención / Retiro documental: L a V de 10 a 13 – 14 a 17 hs.')
   const [telefonosTexto, setTelefonosTexto] = useState('+5411 2150 4310  |  +5411 2150 4311  |  +5411 4343 2748')
-  const [rutasTexto, setRutasTexto] = useState('EXPORTACIÓN: Origen ARGENTINA → Destino PARAGUAY<br>IMPORTACIÓN: Origen PARAGUAY → Destino ARGENTINA')
-  const [cutoffTexto, setCutoffTexto] = useState('▪ Corte operativo & documental / Cut off: Jueves anterior 14:00 hs.<br>▪ Llegada a ASUNCIÓN: Todos los Lunes posteriores a la salida.')
+  const [rutasTexto, setRutasTexto] = useState('EXPORTACIÓN: Origen ARGENTINA → Destino PARAGUAY\nIMPORTACIÓN: Origen PARAGUAY → Destino ARGENTINA')
+  const [cutoffTexto, setCutoffTexto] = useState('▪ Corte operativo & documental / Cut off: Jueves anterior 14:00 hs.\n▪ Llegada a ASUNCIÓN: Todos los Lunes posteriores a la salida.')
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -153,24 +159,31 @@ export default function EmpleadosPage() {
     }
   }
 
-  // Eliminar empleado
-  const eliminarEmpleado = async (id: string, nombre: string) => {
-    if (!confirm(`¿Estás seguro de que deseas eliminar a "${nombre}"?`)) return
+  // Solicitar eliminación de empleado
+  const solicitarEliminacion = (id: string, nombre: string) => {
+    setEmpleadoAEliminar({ id, nombre })
+  }
+
+  // Ejecutar eliminación confirmada en Supabase
+  const confirmarEliminacion = async () => {
+    if (!empleadoAEliminar) return
 
     const { error } = await supabase
       .from('empleados')
       .delete()
-      .eq('id', id)
+      .eq('id', empleadoAEliminar.id)
 
     if (error) {
       toast.error(`Error al eliminar: ${error.message}`)
     } else {
-      toast.success('Empleado eliminado')
-      if (empleadoSeleccionado?.id === id) {
+      toast.success('Empleado eliminado correctamente')
+      if (empleadoSeleccionado?.id === empleadoAEliminar.id) {
         setEmpleadoSeleccionado(null)
       }
       cargarEmpleados()
     }
+
+    setEmpleadoAEliminar(null)
   }
 
   // Generador de Firma HTML dinámica con datos modificables
@@ -178,18 +191,21 @@ export default function EmpleadosPage() {
     const logoUrl = 'https://sistema-gmcargo.vercel.app/logo.png'
     const textoSalidas = usarFechasAuto ? obtenerProximosViernes(5) : fechasSalidas
 
+    const rutasFormatted = rutasTexto.replace(/\n/g, '<br>')
+    const cutoffFormatted = cutoffTexto.replace(/\n/g, '<br>')
+
     return `
-<table cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.4; width: 100%; max-width: 620px;">
+<table cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.3; width: 100%; max-width: 620px;">
   <tr>
-    <td colspan="2" style="padding-bottom: 12px; color: #555555; font-size: 13px;">Best regards / Cordialmente,</td>
+    <td colspan="2" style="padding-bottom: 8px; color: #555555; font-size: 13px;">Best regards / Cordialmente,</td>
   </tr>
   <tr>
-    <td style="border-bottom: 2px solid #1A448F; padding-bottom: 12px; vertical-align: middle; width: 70px;">
+    <td style="border-bottom: 2px solid #1A448F; padding-bottom: 8px; vertical-align: middle; width: 70px;">
       <a href="https://www.gmcargo.com" target="_blank" style="text-decoration: none; display: block;">
         <img src="${logoUrl}" alt="GM CARGO SRL" width="60" height="60" style="display: block; border: 0; outline: none; text-decoration: none;" />
       </a>
     </td>
-    <td style="border-bottom: 2px solid #1A448F; padding-bottom: 12px; vertical-align: middle; padding-left: 12px;">
+    <td style="border-bottom: 2px solid #1A448F; padding-bottom: 8px; vertical-align: middle; padding-left: 12px;">
       <span style="font-size: 16px; font-weight: bold; color: #1A448F;">${emp.nombre_apellido}</span>
       <span style="color: #888888;"> | </span>
       <a href="mailto:${emp.email}" style="color: #1A448F; text-decoration: none; font-weight: 500;">${emp.email}</a><br>
@@ -201,7 +217,7 @@ export default function EmpleadosPage() {
     </td>
   </tr>
   <tr>
-    <td colspan="2" style="padding-top: 10px; padding-bottom: 15px; font-size: 12px; color: #666666;">
+    <td colspan="2" style="padding-top: 8px; padding-bottom: 10px; font-size: 12px; color: #666666; line-height: 1.35;">
       ${direccionTexto}<br>
       <strong style="color: #D9534F;">Ph/Fax:</strong> ${telefonosTexto}<br>
       CP C1092AAG &nbsp;|&nbsp; Buenos Aires — Argentina
@@ -209,23 +225,23 @@ export default function EmpleadosPage() {
   </tr>
   <tr>
     <td colspan="2">
-      <table cellpadding="12" cellspacing="0" style="width: 100%; border: 1px solid #1A448F; background-color: #F8FAFC; border-radius: 6px; font-size: 12px;">
+      <table cellpadding="0" cellspacing="0" style="width: 100%; border: 1px solid #1A448F; background-color: #F8FAFC; border-radius: 6px; font-size: 12px;">
         <tr>
-          <td align="center"><strong style="font-size: 13px; color: #1A448F; text-transform: uppercase;">Servicio Consolidado Terrestre</strong></td>
+          <td align="center" style="padding: 6px 8px 3px 8px;"><strong style="font-size: 12px; color: #1A448F; text-transform: uppercase;">Servicio Consolidado Terrestre</strong></td>
         </tr>
         <tr>
-          <td align="center" style="font-weight: bold; color: #444444;">
-            ${rutasTexto}
+          <td align="center" style="padding: 2px 8px 5px 8px; font-weight: bold; color: #444444; line-height: 1.25;">
+            ${rutasFormatted}
           </td>
         </tr>
         <tr>
-          <td align="center" style="background-color: #EBF3FC; font-weight: bold; color: #1A448F;">
+          <td align="center" style="padding: 4px 8px; background-color: #EBF3FC; font-weight: bold; color: #1A448F; border-top: 1px solid #D0E2F7; border-bottom: 1px solid #D0E2F7;">
             Próximas Salidas VIERNES: ${textoSalidas}
           </td>
         </tr>
         <tr>
-          <td align="center" style="font-size: 11px; color: #555555;">
-            ${cutoffTexto}
+          <td align="center" style="padding: 5px 8px 6px 8px; font-size: 11px; color: #555555; line-height: 1.25;">
+            ${cutoffFormatted}
           </td>
         </tr>
       </table>
@@ -369,7 +385,7 @@ export default function EmpleadosPage() {
                             ✏️
                           </button>
                           <button
-                            onClick={() => eliminarEmpleado(emp.id, emp.nombre_apellido)}
+                            onClick={() => solicitarEliminacion(emp.id, emp.nombre_apellido)}
                             className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-rose-600 transition"
                             title="Eliminar Empleado"
                           >
@@ -385,59 +401,96 @@ export default function EmpleadosPage() {
           </div>
         </div>
 
-        {/* CONFIGURACIÓN Y VISTA PREVIA DE LA FIRMA */}
+        {/* VISTA PREVIA Y DESPLEGABLE DE CONFIGURACIÓN DE LA FIRMA */}
         <div className="lg:col-span-6 space-y-4">
           <div className="bg-white dark:bg-slate-900/90 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors space-y-4">
             
-            {/* Panel de Modificación Manual / Automática */}
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
-              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase tracking-wider flex items-center justify-between">
-                ⚙️ Configuración de Firma y Fechas
-                <label className="flex items-center gap-2 cursor-pointer font-normal text-xs text-sky-600 dark:text-sky-400 lowercase">
-                  <input
-                    type="checkbox"
-                    checked={usarFechasAuto}
-                    onChange={(e) => setUsarFechasAuto(e.target.checked)}
-                    className="w-4 h-4 text-sky-600 rounded"
-                  />
-                  Fechas automáticas (próximos 5 viernes)
-                </label>
-              </h4>
+            {/* Botón desplegable para 'Editar Información' */}
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden transition-all">
+              <button
+                type="button"
+                onClick={() => setMostrarConfiguracion(!mostrarConfiguracion)}
+                className="w-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 p-3.5 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  ⚙️ Editar Información de Firma
+                </span>
+                <span className="text-slate-500 font-medium">
+                  {mostrarConfiguracion ? '▲ Ocultar' : '▼ Expandir'}
+                </span>
+              </button>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Próximas Salidas (Fechas):</label>
-                  <input
-                    type="text"
-                    disabled={usarFechasAuto}
-                    value={fechasSalidas}
-                    onChange={(e) => setFechasSalidas(e.target.value)}
-                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:bg-slate-100 dark:disabled:bg-slate-900/50 text-xs"
-                  />
+              {/* Formulario Desplegable */}
+              {mostrarConfiguracion && (
+                <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex justify-end mb-1">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-sky-600 dark:text-sky-400">
+                      <input
+                        type="checkbox"
+                        checked={usarFechasAuto}
+                        onChange={(e) => setUsarFechasAuto(e.target.checked)}
+                        className="w-4 h-4 text-sky-600 rounded"
+                      />
+                      Fechas automáticas (próximos 5 viernes)
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Próximas Salidas (Fechas):</label>
+                      <input
+                        type="text"
+                        disabled={usarFechasAuto}
+                        value={fechasSalidas}
+                        onChange={(e) => setFechasSalidas(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:bg-slate-100 dark:disabled:bg-slate-900/50 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Teléfonos:</label>
+                      <input
+                        type="text"
+                        value={telefonosTexto}
+                        onChange={(e) => setTelefonosTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Dirección y Horarios:</label>
+                      <input
+                        type="text"
+                        value={direccionTexto}
+                        onChange={(e) => setDireccionTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Rutas / Servicios (Cuadro Azul):</label>
+                      <textarea
+                        rows={2}
+                        value={rutasTexto}
+                        onChange={(e) => setRutasTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs resize-none"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Cut off &amp; Llegada (Cuadro Azul):</label>
+                      <textarea
+                        rows={2}
+                        value={cutoffTexto}
+                        onChange={(e) => setCutoffTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs resize-none"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Teléfonos:</label>
-                  <input
-                    type="text"
-                    value={telefonosTexto}
-                    onChange={(e) => setTelefonosTexto(e.target.value)}
-                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Dirección y Horarios:</label>
-                  <input
-                    type="text"
-                    value={direccionTexto}
-                    onChange={(e) => setDireccionTexto(e.target.value)}
-                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Vista previa */}
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2">
+            {/* Header de Vista Previa */}
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-2 pt-1">
               <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 text-sm">
                 ✉️ Vista Previa
               </h3>
@@ -552,6 +605,43 @@ export default function EmpleadosPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN DE ELIMINACIÓN */}
+      {empleadoAEliminar && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-2xl shadow-xl border border-gray-200 dark:border-slate-800 p-6 space-y-4 text-center">
+            <div className="w-12 h-12 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto text-2xl">
+              ⚠️
+            </div>
+            
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                ¿Eliminar empleado?
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Esta acción no se puede deshacer. Vas a eliminar a <strong className="text-slate-800 dark:text-slate-200">{empleadoAEliminar.nombre}</strong>.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setEmpleadoAEliminar(null)}
+                className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium text-xs transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarEliminacion}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold text-xs transition cursor-pointer shadow-sm"
+              >
+                Sí, eliminar
+              </button>
+            </div>
           </div>
         </div>
       )}
