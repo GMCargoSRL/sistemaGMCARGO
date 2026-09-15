@@ -12,11 +12,34 @@ interface Empleado {
   activo: boolean
 }
 
+// Función auxiliar para calcular automáticamente los próximos N viernes a partir de hoy
+const obtenerProximosViernes = (cantidad: number = 5): string => {
+  const fechas: string[] = []
+  const hoy = new Date()
+  const fecha = new Date(hoy)
+
+  // Encontrar el primer viernes que sea igual o posterior a hoy
+  const diasHastaViernes = (5 - fecha.getDay() + 7) % 7
+  fecha.setDate(fecha.getDate() + diasHastaViernes)
+
+  for (let i = 0; i < cantidad; i++) {
+    const dia = String(fecha.getDate()).padStart(2, '0')
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0')
+    fechas.push(`${dia}/${mes}`)
+    fecha.setDate(fecha.getDate() + 7)
+  }
+
+  return fechas.join(' – ')
+}
+
 export default function EmpleadosPage() {
   const [empleados, setEmpleados] = useState<Empleado[]>([])
   const [cargando, setCargando] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState<Empleado | null>(null)
+  
+  // Estado para controlar la visibilidad del panel de edición de firma
+  const [mostrarConfiguracion, setMostrarConfiguracion] = useState(false)
 
   // Estado para modal / formulario de Empleados
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -32,13 +55,12 @@ export default function EmpleadosPage() {
   const [empleadoAEliminar, setEmpleadoAEliminar] = useState<{ id: string; nombre: string } | null>(null)
 
   // Estados personalizables para el contenido de la Firma Corporativa
+  const [usarFechasAuto, setUsarFechasAuto] = useState(true)
+  const [fechasSalidas, setFechasSalidas] = useState(obtenerProximosViernes(5))
   const [direccionTexto, setDireccionTexto] = useState('Avenida Belgrano 687, 3er Piso, Of. 12 — Atención / Retiro documental: L a V de 10 a 13 – 14 a 17 hs.')
   const [telefonosTexto, setTelefonosTexto] = useState('+5411 2150 4310  |  +5411 2150 4311  |  +5411 4343 2748')
-
-  // Configuración de Fechas de Salidas
-  const [modoFechas, setModoFechas] = useState<'automatico' | 'manual'>('automatico')
-  const [fechasManualesText, setFechasManualesText] = useState('18/09 – 25/09 – 02/10 – 09/10 – 16/10')
-  const [guardandoConfig, setGuardandoConfig] = useState(false)
+  const [rutasTexto, setRutasTexto] = useState('EXPORTACIÓN: Origen ARGENTINA → Destino PARAGUAY\nIMPORTACIÓN: Origen PARAGUAY → Destino ARGENTINA')
+  const [cutoffTexto, setCutoffTexto] = useState('▪ Corte operativo & documental / Cut off: Jueves anterior 14:00 hs.\n▪ Llegada a ASUNCIÓN: Todos los Lunes posteriores a la salida.')
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -65,44 +87,16 @@ export default function EmpleadosPage() {
     setCargando(false)
   }
 
-  // Cargar configuración de fechas
-  const cargarConfiguracionFechas = async () => {
-    const { data, error } = await supabase
-      .from('configuracion_firmas')
-      .select('*')
-      .eq('id', 1)
-      .single()
-
-    if (data && !error) {
-      setModoFechas(data.modo || 'automatico')
-      if (data.fechas_manuales) setFechasManualesText(data.fechas_manuales)
-    }
-  }
-
-  // Guardar configuración de fechas en Supabase
-  const guardarConfiguracionFechas = async () => {
-    setGuardandoConfig(true)
-    const { error } = await supabase
-      .from('configuracion_firmas')
-      .upsert({
-        id: 1,
-        modo: modoFechas,
-        fechas_manuales: fechasManualesText,
-        updated_at: new Date().toISOString(),
-      })
-
-    if (error) {
-      toast.error(`Error al guardar configuración: ${error.message}`)
-    } else {
-      toast.success('Configuración de fechas de firmas actualizada')
-    }
-    setGuardandoConfig(false)
-  }
-
   useEffect(() => {
     cargarEmpleados()
-    cargarConfiguracionFechas()
   }, [])
+
+  // Recalcular fechas automáticas si el interruptor está activado
+  useEffect(() => {
+    if (usarFechasAuto) {
+      setFechasSalidas(obtenerProximosViernes(5))
+    }
+  }, [usarFechasAuto])
 
   // Abrir modal para Crear Empleado
   const abrirModalCrear = () => {
@@ -192,23 +186,26 @@ export default function EmpleadosPage() {
     setEmpleadoAEliminar(null)
   }
 
-  // Generador de Firma HTML dinámica vinculada a la API de banner
+  // Generador de Firma HTML dinámica optimizada contra saltos de línea de Outlook
   const generarHtmlFirma = (emp: Empleado) => {
     const logoUrl = 'https://sistema-gmcargo.vercel.app/logo.png'
-    const bannerUrl = `https://sistema-gmcargo.vercel.app/api/banner-salidas?t=${Date.now()}`
+    const textoSalidas = usarFechasAuto ? obtenerProximosViernes(5) : fechasSalidas
+
+    const rutasFormatted = rutasTexto.replace(/\n/g, '<br>')
+    const cutoffFormatted = cutoffTexto.replace(/\n/g, '<br>')
 
     return `
-<table cellpadding="0" cellspacing="0" border="0" width="600" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.2; width: 600px; border-collapse: collapse;">
+<table cellpadding="0" cellspacing="0" border="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #333333; line-height: 1.2; width: 100%; max-width: 620px; border-collapse: collapse;">
   <tr>
     <td colspan="2" style="padding: 0 0 8px 0; margin: 0; color: #555555; font-size: 13px; line-height: 1.2;">Best regards / Cordialmente,</td>
   </tr>
   <tr>
-    <td width="70" style="border-bottom: 2px solid #1A448F; padding: 0 0 8px 0; margin: 0; vertical-align: middle; width: 70px;">
+    <td style="border-bottom: 2px solid #1A448F; padding: 0 0 8px 0; margin: 0; vertical-align: middle; width: 70px;">
       <a href="https://www.gmcargo.com" target="_blank" style="text-decoration: none; display: block;">
         <img src="${logoUrl}" alt="GM CARGO SRL" width="60" height="60" style="display: block; border: 0; outline: none; text-decoration: none;" />
       </a>
     </td>
-    <td width="530" style="border-bottom: 2px solid #1A448F; padding: 0 0 8px 12px; margin: 0; vertical-align: middle; line-height: 1.25; width: 530px;">
+    <td style="border-bottom: 2px solid #1A448F; padding: 0 0 8px 12px; margin: 0; vertical-align: middle; line-height: 1.25;">
       <span style="font-size: 16px; font-weight: bold; color: #1A448F; line-height: 1.2;">${emp.nombre_apellido}</span>
       <span style="color: #888888;"> | </span>
       <a href="mailto:${emp.email}" style="color: #1A448F; text-decoration: none; font-weight: 500;">${emp.email}</a><br>
@@ -228,7 +225,26 @@ export default function EmpleadosPage() {
   </tr>
   <tr>
     <td colspan="2" style="padding: 0; margin: 0;">
-      <img src="${bannerUrl}" alt="Servicio Consolidado Terrestre - Próximas Salidas" width="600" height="140" style="display: block; border: 0; width: 600px; height: 140px; outline: none; text-decoration: none;" />
+      <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; border: 1px solid #1A448F; background-color: #F8FAFC; border-radius: 6px; font-size: 12px; border-collapse: collapse;">
+        <tr>
+          <td align="center" style="padding: 6px 8px 3px 8px; margin: 0; font-size: 12px; line-height: 1.1;"><strong style="color: #1A448F; text-transform: uppercase;">Servicio Consolidado Terrestre</strong></td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 2px 8px 4px 8px; margin: 0; font-size: 12px; font-weight: bold; color: #444444; line-height: 1.2;">
+            ${rutasFormatted}
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 4px 8px; margin: 0; font-size: 12px; background-color: #EBF3FC; font-weight: bold; color: #1A448F; border-top: 1px solid #D0E2F7; border-bottom: 1px solid #D0E2F7; line-height: 1.2;">
+            Próximas Salidas VIERNES: ${textoSalidas}
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding: 4px 8px 5px 8px; margin: 0; font-size: 11px; color: #555555; line-height: 1.2;">
+            ${cutoffFormatted}
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
 </table>
@@ -280,7 +296,7 @@ export default function EmpleadosPage() {
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => { cargarEmpleados(); cargarConfiguracionFechas(); }}
+            onClick={cargarEmpleados}
             className="bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3.5 py-2 rounded-xl font-medium text-sm transition cursor-pointer"
           >
             🔄 Actualizar
@@ -385,93 +401,92 @@ export default function EmpleadosPage() {
           </div>
         </div>
 
-        {/* VISTA PREVIA Y DATOS GENERALES */}
+        {/* VISTA PREVIA Y DESPLEGABLE DE CONFIGURACIÓN DE LA FIRMA */}
         <div className="lg:col-span-6 space-y-4">
-          {/* CONTROL DE FECHAS DE SALIDAS */}
-          <div className="p-4 bg-sky-50/50 dark:bg-slate-800/70 rounded-xl border border-sky-100 dark:border-slate-800 space-y-3">
-            <h4 className="text-xs font-bold text-sky-900 dark:text-sky-300 uppercase tracking-wide flex items-center gap-1.5">
-              📅 Fechas de Próximas Salidas en Banner
-            </h4>
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
-                  <input
-                    type="radio"
-                    name="modoFechas"
-                    value="automatico"
-                    checked={modoFechas === 'automatico'}
-                    onChange={() => setModoFechas('automatico')}
-                    className="text-sky-600"
-                  />
-                  Calcular Automático (desde Salidas)
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700 dark:text-slate-300">
-                  <input
-                    type="radio"
-                    name="modoFechas"
-                    value="manual"
-                    checked={modoFechas === 'manual'}
-                    onChange={() => setModoFechas('manual')}
-                    className="text-sky-600"
-                  />
-                  Manual / Personalizado
-                </label>
-              </div>
-
-              {modoFechas === 'manual' && (
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">
-                    Texto de Fechas (se muestra directo en el banner):
-                  </label>
-                  <input
-                    type="text"
-                    value={fechasManualesText}
-                    onChange={(e) => setFechasManualesText(e.target.value)}
-                    placeholder="Ej: 18/09 – 25/09 – 02/10 – 09/10 – 16/10"
-                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
-                  />
-                </div>
-              )}
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={guardarConfiguracionFechas}
-                  disabled={guardandoConfig}
-                  className="bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs transition cursor-pointer shadow-xs"
-                >
-                  {guardandoConfig ? 'Guardando...' : '💾 Guardar Fechas de Banner'}
-                </button>
-              </div>
-            </div>
-          </div>
-
           <div className="bg-white dark:bg-slate-900/90 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-slate-800 transition-colors space-y-4">
             
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
-                ⚙️ Datos Generales de la Firma
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Teléfonos:</label>
-                  <input
-                    type="text"
-                    value={telefonosTexto}
-                    onChange={(e) => setTelefonosTexto(e.target.value)}
-                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
-                  />
+            {/* Botón desplegable para 'Editar Información' */}
+            <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden transition-all">
+              <button
+                type="button"
+                onClick={() => setMostrarConfiguracion(!mostrarConfiguracion)}
+                className="w-full bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 p-3.5 flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 transition cursor-pointer"
+              >
+                <span className="flex items-center gap-2">
+                  ⚙️ Editar Información de Firma
+                </span>
+                <span className="text-slate-500 font-medium">
+                  {mostrarConfiguracion ? '▲ Ocultar' : '▼ Expandir'}
+                </span>
+              </button>
+
+              {/* Formulario Desplegable */}
+              {mostrarConfiguracion && (
+                <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="flex justify-end mb-1">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs text-sky-600 dark:text-sky-400">
+                      <input
+                        type="checkbox"
+                        checked={usarFechasAuto}
+                        onChange={(e) => setUsarFechasAuto(e.target.checked)}
+                        className="w-4 h-4 text-sky-600 rounded"
+                      />
+                      Fechas automáticas (próximos 5 viernes)
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Próximas Salidas (Fechas):</label>
+                      <input
+                        type="text"
+                        disabled={usarFechasAuto}
+                        value={fechasSalidas}
+                        onChange={(e) => setFechasSalidas(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 disabled:bg-slate-100 dark:disabled:bg-slate-900/50 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Teléfonos:</label>
+                      <input
+                        type="text"
+                        value={telefonosTexto}
+                        onChange={(e) => setTelefonosTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Dirección y Horarios:</label>
+                      <input
+                        type="text"
+                        value={direccionTexto}
+                        onChange={(e) => setDireccionTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Rutas / Servicios (Cuadro Azul):</label>
+                      <textarea
+                        rows={2}
+                        value={rutasTexto}
+                        onChange={(e) => setRutasTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs resize-none"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Cut off &amp; Llegada (Cuadro Azul):</label>
+                      <textarea
+                        rows={2}
+                        value={cutoffTexto}
+                        onChange={(e) => setCutoffTexto(e.target.value)}
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs resize-none"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Dirección y Horarios:</label>
-                  <input
-                    type="text"
-                    value={direccionTexto}
-                    onChange={(e) => setDireccionTexto(e.target.value)}
-                    className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
-                  />
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Header de Vista Previa */}
@@ -484,7 +499,7 @@ export default function EmpleadosPage() {
                   onClick={() => copiarFirma(empleadoSeleccionado)}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg font-semibold text-xs transition cursor-pointer shadow-sm flex items-center gap-1.5"
                 >
-                  📋 Copiar Firma Automática
+                  📋 Copiar Firma
                 </button>
               )}
             </div>
